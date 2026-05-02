@@ -1,0 +1,10 @@
+/* .remote-cursor {
+  border-left: 2px solid #FF6B6B;
+  background: rgba(255, 107, 107, 0.2);
+} */
+
+
+.remote-cursor {
+  border-left: 2px solid white;
+  margin-left: 1px;
+}

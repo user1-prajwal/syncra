@@ -1,19 +1,17 @@
 
 
 
+
 import { useEffect, useRef, useState } from 'react'
 import Editor from '@monaco-editor/react'
-import * as Y from 'yjs'
 
 const LANGUAGES = ['javascript', 'python', 'cpp', 'java', 'typescript']
+const COLORS = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#DDA0DD']
+const NAMES = ['Panda', 'Tiger', 'Eagle', 'Shark', 'Wolf', 'Fox']
 
-// Generate a random color for each user
-function randomColor() {
-  const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD']
-  return colors[Math.floor(Math.random() * colors.length)]
-}
+const MY_NAME = NAMES[Math.floor(Math.random() * NAMES.length)]
+const MY_COLOR = COLORS[Math.floor(Math.random() * COLORS.length)]
 
-// Get room ID from URL, default to 'room1'
 function getRoomId() {
   const path = window.location.pathname.replace('/', '')
   return path || 'room1'
@@ -25,25 +23,20 @@ function App() {
   const [code, setCode] = useState('// Start coding here...')
   const [connected, setConnected] = useState(false)
   const [users, setUsers] = useState(1)
+  const [cursors, setCursors] = useState({})
 
-  const ydocRef = useRef(null)
   const wsRef = useRef(null)
-  const ytextRef = useRef(null)
   const isRemoteChange = useRef(false)
+  const editorRef = useRef(null)
+  const decorationsRef = useRef([])
 
   useEffect(() => {
     const roomId = getRoomId()
-    const ydoc = new Y.Doc()
-    const ytext = ydoc.getText('code')
-    ydocRef.current = ydoc
-    ytextRef.current = ytext
-
-    // Connect to backend
     const ws = new WebSocket(`ws://localhost:4000/${roomId}`)
     wsRef.current = ws
 
     ws.onopen = () => {
-      console.log('Connected to server! 🟢')
+      console.log('Connected! 🟢')
       setConnected(true)
     }
 
@@ -52,13 +45,11 @@ function App() {
       setConnected(false)
     }
 
-    // When we receive an update from another user
     ws.onmessage = async (event) => {
-      // const data = JSON.parse(event.data)
-        const text = event.data instanceof Blob ? await event.data.text() : event.data
-        const data = JSON.parse(text)
+      const text = event.data instanceof Blob ? await event.data.text() : event.data
+      const data = JSON.parse(text)
 
-      if (data.type === 'code'|| data.type === 'init') {
+      if (data.type === 'code' || data.type === 'init') {
         isRemoteChange.current = true
         setCode(data.code)
         isRemoteChange.current = false
@@ -67,24 +58,69 @@ function App() {
       if (data.type === 'users') {
         setUsers(data.count)
       }
+
+      if (data.type === 'cursor') {
+        setCursors((prev) => ({
+          ...prev,
+          [data.name]: {
+            name: data.name,
+            color: data.color,
+            line: data.line,
+            column: data.column
+          }
+        }))
+      }
     }
 
-    return () => {
-      ws.close()
-    }
+    return () => ws.close()
   }, [])
 
-  // When local user types, send to server
+  // Update cursor decorations whenever cursors state changes
+  useEffect(() => {
+    if (!editorRef.current) return
+
+    const newDecorations = Object.values(cursors).map((cursor) => ({
+      range: {
+        startLineNumber: cursor.line,
+        startColumn: cursor.column,
+        endLineNumber: cursor.line,
+        endColumn: cursor.column + 1
+      },
+      options: {
+        beforeContentClassName: 'remote-cursor',
+        hoverMessage: { value: `👤 ${cursor.name}` }
+      }
+    }))
+
+    decorationsRef.current = editorRef.current.deltaDecorations(
+      decorationsRef.current,
+      newDecorations
+    )
+  }, [cursors])
+
   function handleCodeChange(value) {
     if (isRemoteChange.current) return
     setCode(value)
+    if (wsRef.current?.readyState === 1) {
+      wsRef.current.send(JSON.stringify({ type: 'code', code: value }))
+    }
+  }
 
+  function handleCursorChange(e) {
     if (wsRef.current?.readyState === 1) {
       wsRef.current.send(JSON.stringify({
-        type: 'code',
-        code: value
+        type: 'cursor',
+        name: MY_NAME,
+        color: MY_COLOR,
+        line: e.position.lineNumber,
+        column: e.position.column
       }))
     }
+  }
+
+  function handleEditorMount(editor) {
+    editorRef.current = editor
+    editor.onDidChangeCursorPosition(handleCursorChange)
   }
 
   function runCode() {
@@ -120,16 +156,42 @@ function App() {
           ⚡ Collab Editor
         </span>
 
-        {/* Connection status */}
         <span style={{
           width: '8px', height: '8px',
           borderRadius: '50%',
           background: connected ? '#4CAF50' : '#f44336',
           display: 'inline-block'
         }} />
+
         <span style={{ color: '#888', fontSize: '12px' }}>
           {connected ? `Connected — ${users} user(s) online` : 'Disconnected'}
         </span>
+
+        {/* My name badge */}
+        <span style={{
+          fontSize: '12px',
+          padding: '2px 8px',
+          borderRadius: '999px',
+          background: MY_COLOR,
+          color: 'white',
+          fontWeight: 'bold'
+        }}>
+          {MY_NAME} (you)
+        </span>
+
+        {/* Other users' cursors */}
+        {Object.values(cursors).map((cursor) => (
+          <span key={cursor.name} style={{
+            fontSize: '12px',
+            padding: '2px 8px',
+            borderRadius: '999px',
+            background: cursor.color,
+            color: 'white',
+            fontWeight: 'bold'
+          }}>
+            {cursor.name}
+          </span>
+        ))}
 
         <select
           value={language}
@@ -176,6 +238,7 @@ function App() {
             language={language}
             value={code}
             onChange={handleCodeChange}
+            onMount={handleEditorMount}
             theme="vs-dark"
           />
         </div>
