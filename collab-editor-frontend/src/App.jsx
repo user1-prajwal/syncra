@@ -1,4 +1,5 @@
-
+import { Routes, Route, useParams } from 'react-router-dom'
+import Landing from './Landing'
 import { useEffect, useRef, useState } from 'react'
 import Editor from '@monaco-editor/react'
 
@@ -9,12 +10,14 @@ const NAMES = ['Panda', 'Tiger', 'Eagle', 'Shark', 'Wolf', 'Fox']
 const MY_NAME = NAMES[Math.floor(Math.random() * NAMES.length)]
 const MY_COLOR = COLORS[Math.floor(Math.random() * COLORS.length)]
 
-function getRoomId() {
-  const path = window.location.pathname.replace('/', '')
-  return path || 'room1'
-}
+// function getRoomId() {
+//   const path = window.location.pathname.replace('/', '')
+//   return path || 'room1'
+// }
 
-function App() {
+// function App() {
+function EditorPage() {
+  const { roomId } = useParams()  
   const [language, setLanguage] = useState('javascript')
   const [output, setOutput] = useState('')
   const [code, setCode] = useState('// Start coding here...')
@@ -28,7 +31,8 @@ function App() {
   const decorationsRef = useRef([])
 
   useEffect(() => {
-    const roomId = getRoomId()
+    // const roomId = getRoomId()
+    // const { roomId } = useParams()
     const ws = new WebSocket(`ws://localhost:4000/${roomId}`)
     wsRef.current = ws
 
@@ -153,6 +157,44 @@ function App() {
           ⚡ Collab Editor
         </span>
 
+        {/* Room Code Display */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          background: '#1e1e1e',
+          border: '1px solid #555',
+          borderRadius: '6px',
+          padding: '4px 12px',
+        }}>
+          <span style={{ color: '#888', fontSize: '12px' }}>Room:</span>
+          <span style={{ 
+            color: '#4CAF50', 
+            fontSize: '13px', 
+            fontWeight: 'bold',
+            letterSpacing: '2px'
+          }}>
+            {roomId}
+          </span>
+          <button
+            onClick={() => {
+              navigator.clipboard.writeText(roomId)
+              alert('Room code copied! Share it with your friends 🎉')
+            }}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: '#888',
+              cursor: 'pointer',
+              fontSize: '14px',
+              padding: '0 4px'
+            }}
+            title="Copy room code"
+            >
+            📋
+          </button>
+        </div>
+
         <span style={{
           width: '8px', height: '8px',
           borderRadius: '50%',
@@ -255,6 +297,15 @@ function App() {
 
       </div>
     </div>
+  )
+}
+
+function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<Landing />} />
+      <Route path="/room/:roomId" element={<EditorPage />} />
+    </Routes>
   )
 }
 
