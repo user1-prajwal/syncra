@@ -3,7 +3,7 @@ import { Routes, Route, useParams, useNavigate } from 'react-router-dom'
 import Editor from '@monaco-editor/react'
 
 const LANGUAGES = ['javascript', 'python', 'cpp', 'java', 'typescript']
-const COLORS = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#DDA0DD']
+const COLORS = ['#FF6B6B', '#4ECDC4', '#42F527', '#ffffff', '#fc15fc']
 const MY_COLOR = COLORS[Math.floor(Math.random() * COLORS.length)]
 
 // ─── LANDING PAGE ───────────────────────────────────────────────
@@ -133,6 +133,9 @@ function EditorPage() {
   const [userList, setUserList] = useState([])
   const [showUsers, setShowUsers] = useState(false)
   const [languageAlert, setLanguageAlert] = useState('')
+  const [messages, setMessages] = useState([])
+  const [newMessage, setNewMessage] = useState('')
+  const [showChat, setShowChat] = useState(true)
 
   const wsRef = useRef(null)
   const isRemoteChange = useRef(false)
@@ -175,6 +178,16 @@ function EditorPage() {
       if (data.type === 'users') setUsers(data.count)
       if (data.type === 'userlist') setUserList(data.users)
 
+
+        if (data.type === 'chat') {
+        setMessages((prev) => [...prev, {
+        name: data.name,
+        color: data.color,
+        text: data.text,
+        time: data.time
+        }])
+        }   
+
         if (data.type === 'language') {
         setLanguageAlert(`${data.changedBy} is using ${data.language} — you are using ${language}`)
         setTimeout(() => setLanguageAlert(''), 4000)
@@ -215,6 +228,12 @@ function EditorPage() {
     )
   }, [cursors])
 
+
+  useEffect(() => {
+  const chatDiv = document.getElementById('chat-messages')
+  if (chatDiv) chatDiv.scrollTop = chatDiv.scrollHeight
+}, [messages])
+
   function handleCodeChange(value) {
     if (isRemoteChange.current) return
     setCode(value)
@@ -253,6 +272,35 @@ function EditorPage() {
       setOutput('❌ Error: ' + error.message)
     }
   }
+
+
+  function sendMessage() {
+  if (!newMessage.trim()) return
+  if (wsRef.current?.readyState !== 1) return
+
+  const msg = {
+    type: 'chat',
+    name: username,
+    color: MY_COLOR,
+    text: newMessage.trim(),
+    time: new Date().toLocaleTimeString([], { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    })
+  }
+
+  // Add to own messages immediately
+  setMessages((prev) => [...prev, {
+    name: msg.name,
+    color: msg.color,
+    text: msg.text,
+    time: msg.time
+  }])
+
+  // Send to everyone else
+  wsRef.current.send(JSON.stringify(msg))
+  setNewMessage('')
+}
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#1e1e1e' }}>
@@ -435,6 +483,24 @@ function EditorPage() {
           ))}
         </select>
 
+
+        {/* Chat Toggle */}
+        <button
+          onClick={() => setShowChat(prev => !prev)}
+          style={{
+            marginLeft: 'auto',
+            padding: '6px 14px',
+            background: showChat ? '#2563EB' : '#3a3a3a',
+            color: 'white',
+            border: 'none',
+            borderRadius: '5px',
+            cursor: 'pointer',
+            fontSize: '14px'
+            }}
+          >
+          💬 Chat
+          </button>
+
         {/* Run Button */}
         <button
           onClick={runCode}
@@ -472,7 +538,7 @@ function EditorPage() {
       )}
 
 
-      {/* Editor + Output */}
+      {/* Editor + Output + Chat */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <div style={{ flex: 1 }}>
           <Editor
@@ -496,6 +562,195 @@ function EditorPage() {
           </pre>
         </div>
       </div>
+
+ {/* Floating Chat Popup */}
+{showChat && (
+  <div style={{
+    position: 'fixed',
+    bottom: '24px',
+    right: '24px',
+    width: '340px',
+    height: '460px',
+    background: '#181818',
+    border: '1px solid #2f2f2f',
+    borderRadius: '16px',
+    boxShadow: '0 10px 40px rgba(0,0,0,0.65)',
+    display: 'flex',
+    flexDirection: 'column',
+    zIndex: 998,
+    overflow: 'hidden',
+    backdropFilter: 'blur(12px)'
+  }}>
+
+    {/* Header */}
+    <div style={{
+      padding: '14px 18px',
+      background: '#202020',
+      borderBottom: '1px solid #303030',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      flexShrink: 0
+    }}>
+      <span style={{
+        color: '#f5f5f5',
+        fontSize: '15px',
+        fontWeight: '600',
+        letterSpacing: '0.3px'
+      }}>
+        💬 Room Chat
+      </span>
+
+      <button
+        onClick={() => setShowChat(false)}
+        style={{
+          background: 'transparent',
+          border: 'none',
+          color: '#888',
+          cursor: 'pointer',
+          fontSize: '18px',
+          transition: '0.2s'
+        }}
+      >
+        ✕
+      </button>
+    </div>
+
+    {/* Messages */}
+    <div
+      id="chat-messages"
+      style={{
+        flex: 1,
+        overflowY: 'auto',
+        padding: '16px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '14px',
+        background: '#181818'
+      }}
+    >
+      {messages.length === 0 ? (
+        <div style={{
+          margin: 'auto',
+          textAlign: 'center',
+          color: '#666',
+          fontSize: '13px',
+          lineHeight: '1.8'
+        }}>
+          No messages yet 👋
+          <br />
+          Start the conversation
+        </div>
+      ) : (
+        messages.map((msg, index) => {
+          const isMe = msg.name === username
+
+          return (
+            <div
+              key={index}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: isMe ? 'flex-end' : 'flex-start',
+                gap: '5px'
+              }}
+            >
+
+              {/* Username + time */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '7px',
+                flexDirection: isMe ? 'row-reverse' : 'row'
+              }}>
+                <span style={{
+                  fontSize: '12px',
+                  fontWeight: '600',
+                  color: msg.color
+                }}>
+                  {isMe ? 'You' : msg.name}
+                </span>
+
+                <span style={{
+                  fontSize: '10px',
+                  color: '#777'
+                }}>
+                  {msg.time}
+                </span>
+              </div>
+
+              {/* Message bubble */}
+              <div style={{
+                background: isMe
+                  ? '#2563EB'
+                  : '#242424',
+                color: '#f3f4f6',
+                padding: '10px 14px',
+                borderRadius: isMe
+                  ? '14px 14px 4px 14px'
+                  : '14px 14px 14px 4px',
+                fontSize: '13.5px',
+                maxWidth: '240px',
+                wordBreak: 'break-word',
+                lineHeight: '1.6',
+                border: isMe
+                  ? 'none'
+                  : '1px solid #333',
+                boxShadow: '0 2px 10px rgba(0,0,0,0.25)'
+              }}>
+                {msg.text}
+              </div>
+            </div>
+          )
+        })
+      )}
+    </div>
+
+    {/* Input */}
+    <div style={{
+      padding: '12px',
+      borderTop: '1px solid #2f2f2f',
+      display: 'flex',
+      gap: '10px',
+      background: '#202020'
+    }}>
+      <input
+        type="text"
+        placeholder="Message..."
+        value={newMessage}
+        onChange={(e) => setNewMessage(e.target.value)}
+        onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
+        style={{
+          flex: 1,
+          padding: '10px 14px',
+          background: '#121212',
+          border: '1px solid #333',
+          borderRadius: '10px',
+          color: '#f5f5f5',
+          fontSize: '13px',
+          outline: 'none'
+        }}
+      />
+
+      <button
+        onClick={sendMessage}
+        style={{
+          padding: '10px 14px',
+          background: '#2563EB',
+          color: 'white',
+          border: 'none',
+          borderRadius: '10px',
+          cursor: 'pointer',
+          fontSize: '14px',
+          fontWeight: '600'
+        }}
+      >
+        ➤
+      </button>
+    </div>
+
+  </div>
+)}
 
     </div>
   )
