@@ -135,7 +135,7 @@ function EditorPage() {
   const [languageAlert, setLanguageAlert] = useState('')
   const [messages, setMessages] = useState([])
   const [newMessage, setNewMessage] = useState('')
-  const [showChat, setShowChat] = useState(true)
+  const [showChat, setShowChat] = useState(false)
   const [files, setFiles] = useState([
     { id: '1', name: 'index.js', language: 'javascript', code: '// Start coding here...' }
     ])
@@ -394,6 +394,79 @@ function createNewFile() {
   }
 }
 
+
+function importFile() {
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.multiple = true
+  input.accept = '.js,.py,.java,.cpp,.ts,.txt,.html,.css,.json'
+
+  input.onchange = (e) => {
+    const selectedFiles = Array.from(e.target.files)
+
+    selectedFiles.forEach((file) => {
+      const reader = new FileReader()
+
+      reader.onload = (event) => {
+        const code = event.target.result
+
+        // detect language from extension
+        const ext = file.name.split('.').pop()
+        const extMap = {
+          js: 'javascript', py: 'python',
+          java: 'java', cpp: 'cpp',
+          ts: 'typescript', txt: 'plaintext',
+          html: 'html', css: 'css', json: 'json'
+        }
+        const language = extMap[ext] || 'plaintext'
+
+        const newFile = {
+          id: Date.now().toString() + Math.random(),
+          name: file.name,
+          language,
+          code
+        }
+
+        // Add to local files
+        setFiles(prev => [...prev, newFile])
+        setActiveFileId(newFile.id)
+
+        // Broadcast to everyone in room
+        if (wsRef.current?.readyState === 1) {
+          wsRef.current.send(JSON.stringify({
+            type: 'newfile',
+            file: newFile
+          }))
+        }
+      }
+
+      reader.readAsText(file)
+    })
+  }
+
+  input.click()
+}
+
+
+async function exportFiles() {
+  const JSZip = (await import('jszip')).default
+  const zip = new JSZip()
+
+  // Add each file to zip
+  files.forEach((file) => {
+    zip.file(file.name, file.code)
+  })
+
+  // Generate and download zip
+  const blob = await zip.generateAsync({ type: 'blob' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `collab-project-${roomId}.zip`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#1e1e1e' }}>
 
@@ -579,6 +652,44 @@ function createNewFile() {
             <option key={lang} value={lang}>{lang}</option>
           ))}
         </select>
+
+
+
+        {/* Import Button */}
+        <button
+          onClick={importFile}
+          style={{
+            marginLeft: 'auto',
+            padding: '6px 14px',
+            background: '#3a3a3a',
+            color: 'white',
+            border: '1px solid #555',
+            borderRadius: '5px',
+            cursor: 'pointer',
+            fontSize: '13px'
+          }}
+          title="Import files from your computer"
+        >
+          📂 Import
+        </button>
+
+        {/* Export Button */}
+        <button
+          onClick={exportFiles}
+          style={{
+            marginLeft: '8px',
+            padding: '6px 14px',
+            background: '#3a3a3a',
+            color: 'white',
+            border: '1px solid #555',
+            borderRadius: '5px',
+            cursor: 'pointer',
+            fontSize: '13px'
+          }}
+          title="Download all files as ZIP"
+        >
+          💾 Export
+        </button>
 
 
         {/* Chat Toggle */}
