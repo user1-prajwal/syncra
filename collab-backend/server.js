@@ -146,7 +146,8 @@ wss.on('connection', (ws, req) => {
   })
 })
 
-const PORT = 4000
+// const PORT = 4000
+const PORT = process.env.PORT || 4000
 server.listen(PORT, () => {
   console.log(`Backend running on http://localhost:${PORT}`)
 })
