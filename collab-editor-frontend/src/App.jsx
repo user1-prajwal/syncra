@@ -929,59 +929,154 @@ async function exportFiles() {
 
       {/* Username Popup */}
       {!nameEntered && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0,0,0,0.85)', display: 'flex',
-          alignItems: 'center', justifyContent: 'center', zIndex: 1000
-        }}>
-          <div style={{
-            background: '#2d2d2d', padding: '40px', borderRadius: '12px',
-            border: '1px solid #444', display: 'flex',
-            flexDirection: 'column', gap: '16px', minWidth: '320px'
-          }}>
-            <h2 style={{ color: 'white', margin: 0, fontSize: '22px' }}>
-              ⚡ Welcome to Collab Editor
-            </h2>
-            <p style={{ color: '#888', margin: 0, fontSize: '14px' }}>
-              Room: <span style={{ color: '#4CAF50', fontWeight: 'bold', letterSpacing: '2px' }}>{roomId}</span>
-            </p>
-            <input
-              type="text"
-              placeholder="Enter your name..."
-              maxLength={20}
-              autoFocus
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && username.trim()) {
-                  setNameEntered(true)
-                  sendJoin(username.trim())
-                }
-              }}
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.18)', // very light dark overlay
+          backdropFilter: 'blur(3px)', // blur editor behind
+          WebkitBackdropFilter: 'blur(3px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 999,
+          padding: '20px',
+        }}
+      >
+        <div
+          style={{
+            width: '100%',
+            maxWidth: '370px',
+            background: 'rgba(24,24,27,0.92)',
+            border: '1px solid rgba(255,255,255,0.06)',
+            borderRadius: '18px',
+            padding: '26px',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.45)',
+          }}
+        >
+          {/* Small top line */}
+          <div
+            style={{
+              width: '70px',
+              height: '4px',
+              borderRadius: '999px',
+              background: 'linear-gradient(90deg,#F59E0B,#EF4444)',
+              marginBottom: '22px',
+            }}
+          />
+
+          {/* Heading */}
+          <h2
+            style={{
+              color: 'white',
+              margin: 0,
+              fontSize: '26px',
+              fontWeight: '800',
+              letterSpacing: '-1px',
+            }}
+          >
+            Join Room
+          </h2>
+
+          <p
+            style={{
+              color: '#A1A1AA',
+              fontSize: '14px',
+              marginTop: '10px',
+              marginBottom: '22px',
+              lineHeight: 1.6,
+            }}
+          >
+            Enter your name to start collaborating.
+          </p>
+
+          {/* Room ID */}
+          <div
+            style={{
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px solid rgba(255,255,255,0.05)',
+              padding: '14px',
+              borderRadius: '14px',
+              marginBottom: '18px',
+            }}
+          >
+            <div
               style={{
-                padding: '10px 14px', background: '#1e1e1e',
-                border: '1px solid #555', borderRadius: '6px',
-                color: 'white', fontSize: '15px', outline: 'none'
-              }}
-            />
-            <button
-              onClick={() => {
-                if (username.trim()) {
-                  setNameEntered(true)
-                  sendJoin(username.trim())
-                }
-              }}
-              style={{
-                padding: '10px', background: '#4CAF50',
-                color: 'white', border: 'none', borderRadius: '6px',
-                fontSize: '15px', fontWeight: 'bold', cursor: 'pointer'
+                color: '#71717A',
+                fontSize: '11px',
+                marginBottom: '6px',
+                letterSpacing: '1px',
               }}
             >
-              Join Room →
-            </button>
+              ROOM CODE
+            </div>
+
+            <div
+              style={{
+                color: '#F4F4F5',
+                fontWeight: '800',
+                fontSize: '24px',
+                letterSpacing: '5px',
+              }}
+            >
+              {roomId}
+            </div>
           </div>
+
+          {/* Input */}
+          <input
+            type="text"
+            placeholder="Your name..."
+            maxLength={20}
+            autoFocus
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && username.trim()) {
+                setNameEntered(true)
+                sendJoin(username.trim())
+              }
+            }}
+            style={{
+              width: '100%',
+              padding: '14px 16px',
+              background: '#111111',
+              border: '1px solid rgba(255,255,255,0.06)',
+              borderRadius: '14px',
+              color: 'white',
+              fontSize: '15px',
+              outline: 'none',
+              boxSizing: 'border-box',
+              marginBottom: '14px',
+            }}
+          />
+
+          {/* Button */}
+          <button
+            onClick={() => {
+              if (username.trim()) {
+                setNameEntered(true)
+                sendJoin(username.trim())
+              }
+            }}
+            style={{
+              width: '100%',
+              padding: '14px',
+              border: 'none',
+              borderRadius: '14px',
+              background: 'linear-gradient(135deg,#F59E0B,#EF4444)',
+              color: 'white',
+              fontSize: '15px',
+              fontWeight: '700',
+              cursor: 'pointer',
+              boxShadow: '0 10px 30px rgba(239,68,68,0.25)',
+            }}
+          >
+            Join →
+          </button>
         </div>
-      )}
+      </div>
+    )}
 
       {/* Toolbar */}
       <div style={{
