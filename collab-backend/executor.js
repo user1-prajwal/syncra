@@ -45,7 +45,17 @@ function runCode(language, code) {
         try {
           const result = JSON.parse(data)
           console.log('Glot response:', JSON.stringify(result))
-          const output = result.stdout || result.stderr || '✅ Ran successfully (no output)'
+          const output =
+                result.stdout ||
+                result.stderr ||
+                '⚠️ Code Execution Unavailable\n\n' +
+                'This public demo focuses on real-time collaboration features.\n\n' +
+                '✅ Real-time code synchronization\n' +
+                '✅ Multi-user collaboration\n' +
+                '✅ Live chat and cursor tracking\n' +
+                '✅ File management\n\n' +
+                'Code execution requires Docker-based sandboxing.\n' +
+                'This feature is available only in the local development environment.'
           resolve({ output, error: !!result.stderr })
         } catch {
           console.log('Raw response:', data)
