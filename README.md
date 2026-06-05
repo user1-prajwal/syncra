@@ -6,7 +6,7 @@
 
 ---
 
-## 🚀 What is Collab Editor?
+## What is Collab Editor?
 
 Collab Editor is a real-time collaborative code editor built from scratch. Multiple users can join the same room and write code together — with every keystroke syncing instantly across all screens. Think of it as a shared coding environment where your whole team can see, edit, and run code at the same time.
 
@@ -14,7 +14,7 @@ Built entirely by a 6th semester CSE student as a passion project to solve a rea
 
 ---
 
-## ✨ Features
+## Features
 
 ### 👥 Real-Time Collaboration
 - Every keystroke syncs **instantly** across all users in the same room
@@ -63,7 +63,7 @@ Built entirely by a 6th semester CSE student as a passion project to solve a rea
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 ### Frontend
 | Technology | Purpose |
@@ -91,22 +91,22 @@ Built entirely by a 6th semester CSE student as a passion project to solve a rea
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│                    Browser (React)                   │
-│  Monaco Editor + File Tree + Chat + Users Panel      │
+│                    Browser (React)                  │
+│  Monaco Editor + File Tree + Chat + Users Panel     │
 └──────────────────────┬──────────────────────────────┘
                        │ WebSocket (wss://)
                        │ HTTP (https://)
 ┌──────────────────────▼──────────────────────────────┐
-│              Node.js + Express Backend               │
-│  Room Management + WebSocket Server + Code Executor  │
+│              Node.js + Express Backend              │
+│  Room Management + WebSocket Server + Code Executor │
 └──────────────────────┬──────────────────────────────┘
                        │
 ┌──────────────────────▼──────────────────────────────┐
-│              Docker Containers                       │
+│              Docker Containers                      │
 │  node:18 | python:3.11 | openjdk:17 | gcc:latest    │
 └─────────────────────────────────────────────────────┘
 ```
@@ -127,7 +127,7 @@ User B and C see the change instantly
 
 ---
 
-## 🚀 Run Locally
+## Run Locally
 
 ### Prerequisites
 - Node.js 18+
@@ -158,7 +158,7 @@ Open `http://localhost:5173` in your browser!
 
 ---
 
-## 💡 How to Use
+## How to Use
 
 1. Open the app and click **"Create New Room"**
 2. A unique 6-letter room code is generated
@@ -168,7 +168,7 @@ Open `http://localhost:5173` in your browser!
 
 ---
 
-## 🔮 Planned Features
+## Planned Features
 
 - [ ] TypeScript execution support
 - [ ] Teacher/Student mode (admin controls editor, others view only)
@@ -179,7 +179,7 @@ Open `http://localhost:5173` in your browser!
 
 ---
 
-## 🧠 Key Technical Challenges Solved
+## Key Technical Challenges Solved
 
 ### 1. Preventing infinite sync loops
 When User B receives code from the server and the editor updates, Monaco's `onChange` fires again — which would send the code back to the server, creating an infinite loop. Solved using an `isRemoteChange` ref flag that skips sending when the update came from the server.
