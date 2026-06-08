@@ -593,16 +593,97 @@ function Landing() {
         </button>
       </div>
 
-      {/* FOOTER */}
-      <div
-        style={{
-          padding: '28px',
-          textAlign: 'center',
-          color: '#64748B',
-          borderTop: '1px solid rgba(255,255,255,0.06)',
-        }}
-      >
-       
+      {/* Footer */}
+      <div style={{ background: '#0d1117', borderTop: '1px solid #1f2937', padding: '48px 48px 24px', color: '#6B7280' }}>
+
+        <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
+
+          {/* Top section */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '40px', marginBottom: '40px' }}>
+
+            {/* Brand column */}
+            <div>
+              <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'white', marginBottom: '12px' }}>
+                ⚡ Collab Editor
+              </div>
+              <p style={{ fontSize: '14px', lineHeight: 1.8, margin: '0 0 20px' }}>
+                  A free real-time collaborative code editor. No signup. No install. Just code together.
+                </p>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  {/* GitHub */}
+                  <a href="https://github.com/user1-prajwal" target="_blank" rel="noreferrer" style={{ width: '36px', height: '36px', background: '#1f2937', border: '1px solid #374151', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}>
+                    <img src="https://cdn.simpleicons.org/github/9CA3AF" width="18" height="18" alt="GitHub" />
+                  </a>
+                  
+                  {/* LinkedIn - FIXED WITH INLINE SVG MATCHING YOUR EXACT COLOR */}
+                  <a href="https://www.linkedin.com/in/user1-prajwal451/" target="_blank" rel="noreferrer" style={{ width: '36px', height: '36px', background: '#1f2937', border: '1px solid #374151', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}>
+                    <svg role="img" viewBox="0 0 24 24" width="18" height="18" fill="#9CA3AF" xmlns="http://www.w3.org/2000/svg">
+                      <title>LinkedIn</title>
+                      <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0z"/>
+                    </svg>
+                  </a>
+                  
+                  {/* Instagram */}
+                  <a href="https://www.instagram.com/prajwal_poojari01?igsh=eW1jbmluenlnbDhi" target="_blank" rel="noreferrer" style={{ width: '36px', height: '36px', background: '#1f2937', border: '1px solid #374151', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}>
+                    <img src="https://cdn.simpleicons.org/instagram/9CA3AF" width="18" height="18" alt="Instagram" />
+                  </a>
+                  
+                  {/* Twitter / X */}
+                  {/* <a href="https://twitter.com/yourprofile" target="_blank" rel="noreferrer" style={{ width: '36px', height: '36px', background: '#1f2937', border: '1px solid #374151', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}>
+                    <img src="https://cdn.simpleicons.org/x/9CA3AF" width="18" height="18" alt="Twitter" />
+                  </a> */}
+                </div>
+            </div>
+
+            {/* Features column */}
+            <div>
+              <h4 style={{ color: 'white', fontSize: '15px', fontWeight: 'bold', margin: '0 0 16px' }}>Features</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '14px' }}>
+                <span>Real-time Collaboration</span>
+                <span>Live Cursors</span>
+                <span>Built-in Chat</span>
+                <span>File Tree</span>
+                <span>Code Execution</span>
+                <span>Import and Export</span>
+              </div>
+            </div>
+
+            {/* Languages column */}
+            <div>
+              <h4 style={{ color: 'white', fontSize: '15px', fontWeight: 'bold', margin: '0 0 16px' }}>Languages</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '14px' }}>
+                <span>JavaScript</span>
+                <span>Python</span>
+                <span>Java</span>
+                <span>C++</span>
+                <span>TypeScript</span>
+              </div>
+            </div>
+
+            {/* Links column */}
+            <div>
+              <h4 style={{ color: 'white', fontSize: '15px', fontWeight: 'bold', margin: '0 0 16px' }}>Quick Links</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '14px' }}>
+                <button onClick={createRoom} style={{ background: 'none', border: 'none', color: '#6B7280', fontSize: '14px', cursor: 'pointer', padding: 0, textAlign: 'left' }}>
+                  Create Room
+                </button>
+                <a href="https://github.com/user1-prajwal/collab-editor" target="_blank" rel="noreferrer" style={{ color: '#6B7280', textDecoration: 'none' }}>Star on GitHub ⭐</a>
+                <a href="https://github.com/user1-prajwal/collab-editor/issues" target="_blank" rel="noreferrer" style={{ color: '#6B7280', textDecoration: 'none' }}>Report a Bug</a>
+              </div>
+            </div>
+
+          </div>
+
+          {/* Bottom bar */}
+          <div style={{ borderTop: '1px solid #1f2937', paddingTop: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+            <span style={{ fontSize: '13px' }}>© 2025 ⚡ Collab Editor · Free forever · No data stored</span>
+            <a href="https://github.com/user1-prajwal/collab-editor" target="_blank" rel="noreferrer" style={{ color: '#4B5563', fontSize: '13px', textDecoration: 'none' }}>
+              MIT License · GitHub
+            </a>
+          </div>
+
+        </div>
+
       </div>
 
     </div>
