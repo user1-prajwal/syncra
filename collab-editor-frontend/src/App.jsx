@@ -885,26 +885,57 @@ function EditorPage() {
     editor.onDidChangeCursorPosition(handleCursorChange)
   }
 
-  async function runCode() {
+
+async function runCode() {
   setOutput('⏳ Running...')
-  if (activeFile.language === 'typescript') {
-    setOutput('⚠️ TypeScript execution coming soon!')
+
+  // JavaScript runs in browser directly — no server needed!
+  if (activeFile.language === 'javascript') {
+    try {
+      let result = ''
+      const originalLog = console.log
+      console.log = (...args) => { result += args.join(' ') + '\n' }
+      new Function(activeFile.code)()
+      console.log = originalLog
+      setOutput(result || '✅ Ran successfully (no output)')
+    } catch (err) {
+      setOutput('❌ Error: ' + err.message)
+    }
     return
   }
+
+  if (!activeFile.code.trim()) {
+    setOutput('⚠️ Nothing to run — write some code first!')
+    return
+  }
+
   try {
     // const response = await fetch('http://localhost:4000/run', {
     const response = await fetch('https://collab-editor-backend-p7at.onrender.com/run', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        language: activeFile.language, 
-        code: activeFile.code 
+      body: JSON.stringify({
+        language: activeFile.language,
+        code: activeFile.code
       })
     })
     const result = await response.json()
+    if (!result.output || result.output.trim() === '') {
+      setOutput('✅ Ran successfully (no output)\n\nTip: Make sure you are printing something!')
+      return
+    }
     setOutput(result.output)
   } catch {
-    setOutput('❌ Could not connect to server')
+    setOutput(
+      '⚠️ Code Execution Unavailable\n\n' +
+      'The execution server requires Docker which is not\n' +
+      'available on the free hosting plan.\n\n' +
+      'To run code locally:\n' +
+      '1. Clone the repo from GitHub\n' +
+      '2. Run the backend locally\n' +
+      '3. Everything works perfectly!\n\n' +
+      'Collaboration features work fully on live site ✅'
+    )
   }
 }
 
