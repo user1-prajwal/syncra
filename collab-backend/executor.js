@@ -4,35 +4,31 @@ function runCode(language, code) {
   return new Promise((resolve) => {
 
     const langMap = {
-      javascript: 'javascript',
-      python: 'python',
-      java: 'java',
-      cpp: 'cpp',
+      javascript: 'javascript-node',
+      python: 'python-3.14',
+      java: 'openjdk-25',
+      cpp: 'g++-15',
+      typescript: 'typescript-deno'
     }
 
-    const lang = langMap[language]
-    if (!lang) {
+    const compiler = langMap[language]
+    if (!compiler) {
       resolve({ output: '❌ Language not supported', error: true })
       return
     }
 
-    // File name per language
-    const fileNames = {
-      javascript: 'main.js',
-      python: 'main.py',
-      java: 'Main.java',
-      cpp: 'main.cpp',
-    }
-
     const body = JSON.stringify({
-      files: [{ name: fileNames[lang], content: code }]
+      compiler: compiler,
+      code: code,
+      stdin: ''
     })
 
     const options = {
-      hostname: 'glot.io',
-      path: `/api/run/${lang}/latest`,
+      hostname: 'api.onlinecompiler.io',
+      path: '/api/run-code-sync/',
       method: 'POST',
       headers: {
+        'Authorization': process.env.ONLINECOMPILER_API_KEY,
         'Content-Type': 'application/json',
         'Content-Length': Buffer.byteLength(body)
       }
@@ -44,33 +40,33 @@ function runCode(language, code) {
       res.on('end', () => {
         try {
           const result = JSON.parse(data)
-          console.log('Glot response:', JSON.stringify(result))
-          const output =
-                result.stdout ||
-                result.stderr ||
-                '⚠️ Code Execution Unavailable\n\n' +
-                'This public demo focuses on real-time collaboration features.\n\n' +
-                '✅ Real-time code synchronization\n' +
-                '✅ Multi-user collaboration\n' +
-                '✅ Live chat and cursor tracking\n' +
-                '✅ File management\n\n' +
-                'Code execution requires Docker-based sandboxing.\n' +
-                'This feature is available only in the local development environment.'
-          resolve({ output, error: !!result.stderr })
+          console.log('OnlineCompiler response:', JSON.stringify(result))
+
+          if (result.status === 'success') {
+            resolve({
+              output: result.output || '✅ Ran successfully (no output)',
+              error: false
+            })
+          } else if (result.error) {
+            resolve({ output: '❌ Error:\n' + result.error, error: true })
+          } else {
+            resolve({ output: '❌ Unexpected response: ' + data, error: true })
+          }
         } catch {
           console.log('Raw response:', data)
-          resolve({ output: '❌ Raw: ' + data, error: true })
+          resolve({ output: '❌ Failed: ' + data, error: true })
         }
       })
     })
 
-    req.on('error', () => {
+    req.on('error', (e) => {
+      console.log('Request error:', e.message)
       resolve({ output: '❌ Could not connect to execution server', error: true })
     })
 
-    req.setTimeout(15000, () => {
+    req.setTimeout(30000, () => {
       req.destroy()
-      resolve({ output: '⏱️ Time limit exceeded', error: true })
+      resolve({ output: '⏱️ Time limit exceeded (30s)', error: true })
     })
 
     req.write(body)
