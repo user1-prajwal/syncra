@@ -642,9 +642,20 @@ function EditorPage() {
           value={activeFile.language}
           onChange={(e) => {
             const newLang = e.target.value
-            setFiles(prev => prev.map(f =>
-              f.id === activeFileId ? { ...f, language: newLang } : f
-            ))
+            const extMap = {
+              javascript: 'js', python: 'py', java: 'java',
+              cpp: 'cpp', typescript: 'ts', plaintext: 'txt'
+            }
+            setFiles(prev => prev.map(f => {
+              if (f.id !== activeFileId) return f
+              // Auto rename file extension to match language
+              const currentName = f.name
+              const dotIndex = currentName.lastIndexOf('.')
+              const baseName = dotIndex !== -1 ? currentName.substring(0, dotIndex) : currentName
+              const newExt = extMap[newLang] || 'txt'
+              const newName = `${baseName}.${newExt}`
+              return { ...f, language: newLang, name: newName }
+            }))
             if (wsRef.current?.readyState === 1) {
               wsRef.current.send(JSON.stringify({
                 type: 'language', language: newLang,
