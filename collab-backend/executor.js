@@ -11,7 +11,8 @@ function runCode(language, code) {
       typescript: 'typescript-deno',
       csharp: 'dotnet-csharp-9',
       fsharp: 'dotnet-fsharp-9',
-      php: 'php-8.5'
+      php: 'php-8.5',
+      ruby: 'ruby-4.0'
     }
 
     const compiler = langMap[language]
