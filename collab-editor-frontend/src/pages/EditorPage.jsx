@@ -452,7 +452,7 @@ function EditorPage() {
       py: 'python', java: 'java',
       cpp: 'cpp', ts: 'typescript', txt: 'plaintext',c:'c',
       html: 'html', css: 'css', json: 'json', cs: 'csharp', fs: 'fsharp',
-      php: 'php', rb: 'ruby'
+      php: 'php', rb: 'ruby', hs: 'haskell'
     }
     const newFile = {
       id: Date.now().toString(),
@@ -484,7 +484,7 @@ function EditorPage() {
             py: 'python', java: 'java',
             cpp: 'cpp', ts: 'typescript', txt: 'plaintext',c:'c',
             html: 'html', css: 'css', json: 'json', cs: 'csharp', fs: 'fsharp',
-            php: 'php', rb: 'ruby'
+            php: 'php', rb: 'ruby', hs: 'haskell'
           }
           const newFile = {
             id: Date.now().toString() + Math.random(),
@@ -655,7 +655,8 @@ function EditorPage() {
               csharp: 'cs',
               fsharp: 'fs',
               php: 'php',
-              ruby: 'rb'
+              ruby: 'rb',
+              haskell: 'hs'
             }
             setFiles(prev => prev.map(f => {
               if (f.id !== activeFileId) return f
