@@ -12,7 +12,8 @@ function runCode(language, code) {
       csharp: 'dotnet-csharp-9',
       fsharp: 'dotnet-fsharp-9',
       php: 'php-8.5',
-      ruby: 'ruby-4.0'
+      ruby: 'ruby-4.0',
+      haskell: 'haskell-9.12'
     }
 
     const compiler = langMap[language]
