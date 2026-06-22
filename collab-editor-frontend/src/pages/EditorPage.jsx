@@ -451,7 +451,8 @@ function EditorPage() {
     const extMap = {
       py: 'python', java: 'java',
       cpp: 'cpp', ts: 'typescript', txt: 'plaintext',c:'c',
-      html: 'html', css: 'css', json: 'json', cs: 'csharp', fs: 'fsharp'
+      html: 'html', css: 'css', json: 'json', cs: 'csharp', fs: 'fsharp',
+      php: 'php'
     }
     const newFile = {
       id: Date.now().toString(),
@@ -482,7 +483,8 @@ function EditorPage() {
           const extMap = {
             py: 'python', java: 'java',
             cpp: 'cpp', ts: 'typescript', txt: 'plaintext',c:'c',
-            html: 'html', css: 'css', json: 'json', cs: 'csharp', fs: 'fsharp'
+            html: 'html', css: 'css', json: 'json', cs: 'csharp', fs: 'fsharp',
+            php: 'php'
           }
           const newFile = {
             id: Date.now().toString() + Math.random(),
@@ -651,7 +653,8 @@ function EditorPage() {
               typescript: 'ts',
               plaintext: 'txt',
               csharp: 'cs',
-              fsharp: 'fs'
+              fsharp: 'fs',
+              php: 'php'
             }
             setFiles(prev => prev.map(f => {
               if (f.id !== activeFileId) return f

@@ -5,7 +5,8 @@ export const LANGUAGES = [
   'java',
   'typescript',
   'csharp',
-  'fsharp'
+  'fsharp',
+  'php'
 ]
 
 export const LANGUAGE_DISPLAY = {
@@ -16,7 +17,8 @@ export const LANGUAGE_DISPLAY = {
   java: 'Java',
   typescript: 'TypeScript',
   csharp: 'C#',
-  fsharp: 'F#'
+  fsharp: 'F#',
+  php: 'PHP'
 }
 
 

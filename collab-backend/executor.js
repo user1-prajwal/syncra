@@ -10,7 +10,8 @@ function runCode(language, code) {
       java: 'openjdk-25',
       typescript: 'typescript-deno',
       csharp: 'dotnet-csharp-9',
-      fsharp: 'dotnet-fsharp-9'
+      fsharp: 'dotnet-fsharp-9',
+      php: 'php-8.5'
     }
 
     const compiler = langMap[language]
