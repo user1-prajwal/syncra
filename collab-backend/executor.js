@@ -4,10 +4,10 @@ function runCode(language, code) {
   return new Promise((resolve) => {
 
     const langMap = {
-      javascript: 'javascript-node',
       python: 'python-3.14',
-      java: 'openjdk-25',
+      c: 'gcc-15',
       cpp: 'g++-15',
+      java: 'openjdk-25',
       typescript: 'typescript-deno'
     }
 
