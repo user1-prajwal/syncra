@@ -8,7 +8,8 @@ function runCode(language, code) {
       c: 'gcc-15',
       cpp: 'g++-15',
       java: 'openjdk-25',
-      typescript: 'typescript-deno'
+      typescript: 'typescript-deno',
+      csharp: 'dotnet-csharp-9'
     }
 
     const compiler = langMap[language]
