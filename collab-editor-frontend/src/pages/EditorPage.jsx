@@ -65,7 +65,7 @@ function EditorPage() {
   const [newMessage, setNewMessage] = useState('')
   const [showChat, setShowChat] = useState(false)
   const [files, setFiles] = useState([
-    { id: '1', name: 'a', language: 'python', code: 'print("Your next big idea starts right here.")' }
+    { id: '1', name: 'a', language: 'python', code: '# Start coding here...\nprint("Your next big idea starts right here.")' }
   ])
   const [activeFileId, setActiveFileId] = useState('1')
   const [showNewFile, setShowNewFile] = useState(false)
@@ -99,8 +99,8 @@ function EditorPage() {
   }
 
   useEffect(() => {
-    // const ws = new WebSocket(`wss://${BACKEND_URL.replace('https://', '')}/${roomId}`)
-    const ws = new WebSocket(`ws://localhost:4000/${roomId}`)
+    const ws = new WebSocket(`wss://${BACKEND_URL.replace('https://', '')}/${roomId}`)
+    // const ws = new WebSocket(`ws://localhost:4000/${roomId}`)
     wsRef.current = ws
 
     ws.onopen = () => setConnected(true)
