@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 72" width="260" height="72">
+  <!-- Icon mark -->
+  <rect x="0" y="0" width="72" height="72" rx="16" fill="#7c3aed"/>
+  <polyline points="9,15 38,30 9,46" fill="none" stroke="white" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <polyline points="63,25 34,42 63,58" fill="none" stroke="white" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Wordmark in white -->
+  <text x="88" y="50" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="36" font-weight="500" fill="#ffffff" letter-spacing="-0.5">syncra</text>
+</svg>
