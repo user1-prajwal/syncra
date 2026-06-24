@@ -93,6 +93,14 @@ wss.on('connection', (ws, req) => {
     files: currentFiles
   }))
 
+  const existingUsers = roomUsers.get(roomId)
+  if (existingUsers && existingUsers.size > 0) {
+    ws.send(JSON.stringify({
+      type: 'userlist',
+      users: Array.from(existingUsers.values())
+    }))
+  }
+
   broadcastUserCount(roomId)
 
   ws.on('message', async (message) => {
@@ -120,28 +128,36 @@ wss.on('connection', (ws, req) => {
 
     // Save user info
     if (data.type === 'join') {
-      // Check if name already taken in this room
-      const existingUsers = roomUsers.get(roomId)
-      const nameTaken = existingUsers 
-        ? Array.from(existingUsers.values()).some(u => u.name === data.name)
-        : false
+  const existingUsers = roomUsers.get(roomId)
+  const nameTaken = existingUsers 
+    ? Array.from(existingUsers.values()).some(u => u.name === data.name)
+    : false
 
-      if (nameTaken) {
-        // Tell this user name is taken
-        ws.send(JSON.stringify({
-          type: 'name-taken',
-          message: `"${data.name}" is already in use in this room. Please choose a different name.`
-        }))
-        return
-      }
+  if (nameTaken) {
+    ws.send(JSON.stringify({
+      type: 'name-taken',
+      message: `"${data.name}" is already in use in this room. Please choose a different name.`
+    }))
+    return
+  }
 
-      ws._username = data.name
-      roomUsers.get(roomId)?.set(ws, {
-        name: data.name,
-        color: data.color
-      })
-      broadcastUserList(roomId)
+  ws._username = data.name
+  roomUsers.get(roomId)?.set(ws, {
+    name: data.name,
+    color: data.color
+  })
+
+  // Broadcast full updated list to ALL users including the one who just joined
+  const allUsers = Array.from(roomUsers.get(roomId).values())
+  rooms.get(roomId)?.forEach((client) => {
+    if (client.readyState === 1) {
+      client.send(JSON.stringify({
+        type: 'userlist',
+        users: allUsers
+      }))
     }
+  })
+}
 
     // Broadcast to everyone else in room
     const roomClients = rooms.get(roomId)
@@ -153,12 +169,29 @@ wss.on('connection', (ws, req) => {
   })
 
   ws.on('close', () => {
-    console.log(`Someone left room: ${roomId} 🔴`)
-    rooms.get(roomId)?.delete(ws)
-    roomUsers.get(roomId)?.delete(ws)
-    broadcastUserCount(roomId)
-    broadcastUserList(roomId)
-  })
+  console.log(`Someone left room: ${roomId} 🔴`)
+
+  // Tell everyone this user's cursor should be removed
+  if (ws._username) {
+    const roomClients = rooms.get(roomId)
+    if (roomClients) {
+      roomClients.forEach(client => {
+        if (client !== ws && client.readyState === 1) {
+          client.send(JSON.stringify({
+            type: 'cursor-leave',
+            name: ws._username
+          }))
+        }
+      })
+    }
+  }
+
+  rooms.get(roomId)?.delete(ws)
+  roomUsers.get(roomId)?.delete(ws)
+  broadcastUserCount(roomId)
+  broadcastUserList(roomId)
+})
+   
 })
 
 // const PORT = 4000
