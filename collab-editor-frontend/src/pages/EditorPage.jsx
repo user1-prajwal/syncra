@@ -8,55 +8,6 @@ import { SESSION_COLOR, BACKEND_URL } from "../constants";
 
 const CURSOR_IDLE_MS = 3500;
 
-// ─── 4 helpers the new nested tree needs
-
-// Walk the tree and return the node with matching id (files + folders)
-function findNode(nodes, id) {
-  for (const n of nodes) {
-    if (n.id === id) return n;
-    if (n.children) {
-      const found = findNode(n.children, id);
-      if (found) return found;
-    }
-  }
-  return null;
-}
-
-// Return a new tree with one node updated (immutable)
-function treeUpdateNode(nodes, id, updater) {
-  return nodes.map((n) => {
-    if (n.id === id) return { ...n, ...updater(n) };
-    if (n.children) return { ...n, children: treeUpdateNode(n.children, id, updater) };
-    return n;
-  });
-}
-
-// Return a flat list of every file node (ignores folders)
-function flattenFiles(nodes) {
-  const out = [];
-  for (const n of nodes) {
-    if (n.type === "file") out.push(n);
-    if (n.children) out.push(...flattenFiles(n.children));
-  }
-  return out;
-}
-
-// Derive Monaco language string from a filename
-function langFromName(name = "") {
-  const ext = name.split(".").pop()?.toLowerCase();
-  const map = {
-    py: "python", c: "c", cpp: "cpp", cc: "cpp", java: "java",
-    ts: "typescript", tsx: "typescript", js: "javascript", jsx: "javascript",
-    cs: "csharp", fs: "fsharp", php: "php", rb: "ruby",
-    hs: "haskell", go: "go", rs: "rust",
-    txt: "plaintext", md: "markdown", html: "html", css: "css", json: "json",
-  };
-  return map[ext] || "plaintext";
-}
-
-
-
-
 function applyRemoteCodeToModel(model, monaco, newText) {
   const oldText = model.getValue();
   if (oldText === newText) return;
@@ -67,17 +18,13 @@ function applyRemoteCodeToModel(model, monaco, newText) {
 
   let oldEnd = oldText.length;
   let newEnd = newText.length;
-  while (
-    oldEnd > start &&
-    newEnd > start &&
-    oldText[oldEnd - 1] === newText[newEnd - 1]
-  ) {
+  while (oldEnd > start && newEnd > start && oldText[oldEnd - 1] === newText[newEnd - 1]) {
     oldEnd--;
     newEnd--;
   }
 
-  const startPos = model.getPositionAt(start);
-  const endPos   = model.getPositionAt(oldEnd);
+  const startPos   = model.getPositionAt(start);
+  const endPos     = model.getPositionAt(oldEnd);
   const insertText = newText.slice(start, newEnd);
 
   model.pushEditOperations(
@@ -103,20 +50,18 @@ function EditorPage() {
   const [showChat,      setShowChat]      = useState(false);
   const [activePanel,   setActivePanel]   = useState("files");
 
-  // ── nested tree file state 
+  // ── Flat file list (original structure) ──────────────────────────────────
   const [files, setFiles] = useState([
     {
-      id: "f1", name: "src", type: "folder", isOpen: true,
-      children: [
-        { id: "a1", name: "main.py",  type: "file", code: "# Start coding here...\nprint('Hello, world!')" },
-        { id: "a2", name: "utils.py", type: "file", code: "" },
-      ],
+      id: "1",
+      name: "main.py",
+      language: "python",
+      code: "# Start coding here...\nprint('Your next big idea starts right here.')",
     },
-    { id: "b1", name: "README.md", type: "file", code: "# My Project\n" },
   ]);
-
-  // start with the first real file selected
-  const [activeFileId, setActiveFileId] = useState("a1");
+  const [activeFileId,  setActiveFileId]  = useState("1");
+  const [showNewFile,   setShowNewFile]   = useState(false);
+  const [newFileName,   setNewFileName]   = useState("");
 
   const wsRef             = useRef(null);
   const isRemoteChange    = useRef(false);
@@ -127,13 +72,15 @@ function EditorPage() {
   const usernameRef       = useRef("");
   const cursorTimeoutsRef = useRef({});
   const sendIdleTimerRef  = useRef(null);
+  // Keeps a live copy of files accessible inside the WS effect closure
+  // without adding 'files' to [roomId] deps (that would reconnect the socket
+  // every time a file changes).
+  const filesRef = useRef(files);
+  useEffect(() => { filesRef.current = files; }, [files]);
 
-  // ── active file lookup 
-  // findNode searches the whole tree (not just top level)
-  const activeFile     = findNode(files, activeFileId) || flattenFiles(files)[0] || { id: "", name: "untitled.py", code: "", type: "file" };
-  const activeLanguage = activeFile.language || langFromName(activeFile.name);
+  const activeFile = files.find(f => f.id === activeFileId) || files[0];
 
-  // ── WebSocket 
+  // ── WebSocket ─────────────────────────────────────────────────────────────
 
   function sendJoin(name) {
     if (wsRef.current?.readyState === 1) {
@@ -142,6 +89,9 @@ function EditorPage() {
   }
 
   useEffect(() => {
+    // roomId from useParams() can be undefined if the route doesn't match
+    if (!roomId) return;
+
     const ws = new WebSocket(`wss://${BACKEND_URL.replace("https://", "")}/${roomId}`);
     wsRef.current = ws;
 
@@ -153,13 +103,8 @@ function EditorPage() {
       const data = JSON.parse(text);
 
       if (data.type === "code") {
-        // update the matching file anywhere in the tree
-        setFiles((prev) => treeUpdateNode(prev, data.fileId, () => ({ code: data.code })));
-        if (
-          data.fileId === editorFileIdRef.current &&
-          editorRef.current &&
-          monacoRef.current
-        ) {
+        setFiles(prev => prev.map(f => f.id === data.fileId ? { ...f, code: data.code } : f));
+        if (data.fileId === editorFileIdRef.current && editorRef.current && monacoRef.current) {
           const model = editorRef.current.getModel();
           if (model && model.getValue() !== data.code) {
             isRemoteChange.current = true;
@@ -172,38 +117,40 @@ function EditorPage() {
       if (data.type === "init") {
         isRemoteChange.current = true;
         if (data.files) {
-          // normalise server files – ensure every node has type:'file'
-          const normalise = (nodes) =>
-            nodes.map((f) => ({
-              ...f,
-              type: f.type || "file",
-              code: f.code ?? f.content ?? "",
-              ...(f.children ? { children: normalise(f.children) } : {}),
-            }));
-          const normalised = normalise(data.files);
-          setFiles(normalised);
-          const firstFile = flattenFiles(normalised)[0];
-          if (firstFile) setActiveFileId(firstFile.id);
+          setFiles(data.files);
+          setActiveFileId(data.files[0].id);
         }
         isRemoteChange.current = false;
       }
 
       if (data.type === "newfile") {
-        setFiles((prev) => {
-          if (findNode(prev, data.file.id)) return prev;
-          // add to root (flat compat with old backend)
-          return [...prev, { ...data.file, type: data.file.type || "file", code: data.file.code ?? data.file.content ?? "" }];
+        setFiles(prev => {
+          const exists = prev.find(f => f.id === data.file.id);
+          return exists ? prev : [...prev, data.file];
+        });
+      }
+
+      // broadcast when someone deletes a file
+      if (data.type === "deletefile") {
+        setFiles(prev => {
+          const next = prev.filter(f => f.id !== data.fileId);
+          return next.length > 0 ? next : prev; // never delete last file
+        });
+        setActiveFileId(prev => {
+          if (prev === data.fileId) {
+            // filesRef.current always has the latest value without needing
+            // 'files' in the useEffect dependency array
+            const remaining = filesRef.current.filter(f => f.id !== data.fileId);
+            return remaining[0]?.id || prev;
+          }
+          return prev;
         });
       }
 
       if (data.type === "language") {
-        setFiles((prev) =>
-          treeUpdateNode(prev, data.fileId, (f) => {
-            const extMap = { python:"py", c:"c", cpp:"cpp", java:"java", typescript:"ts", csharp:"cs", fsharp:"fs", php:"php", ruby:"rb", haskell:"hs", go:"go", rust:"rs", plaintext:"txt" };
-            const base = f.name.includes(".") ? f.name.slice(0, f.name.lastIndexOf(".")) : f.name;
-            return { language: data.language, name: `${base}.${extMap[data.language] || "txt"}` };
-          })
-        );
+        setFiles(prev => prev.map(f =>
+          f.id === data.fileId ? { ...f, language: data.language } : f
+        ));
         setLanguageAlert(`${data.changedBy} switched to ${data.language}`);
         setTimeout(() => setLanguageAlert(""), 4000);
       }
@@ -219,17 +166,17 @@ function EditorPage() {
       if (data.type === "userlist") setUserList(data.users);
 
       if (data.type === "chat") {
-        setMessages((prev) => [...prev, { name: data.name, color: data.color, text: data.text, time: data.time }]);
+        setMessages(prev => [...prev, { name: data.name, color: data.color, text: data.text, time: data.time }]);
       }
 
       if (data.type === "cursor") {
-        setCursors((prev) => ({
+        setCursors(prev => ({
           ...prev,
           [data.name]: { name: data.name, color: data.color, line: data.line, column: data.column },
         }));
         if (cursorTimeoutsRef.current[data.name]) clearTimeout(cursorTimeoutsRef.current[data.name]);
         cursorTimeoutsRef.current[data.name] = setTimeout(() => {
-          setCursors((prev) => { const next = { ...prev }; delete next[data.name]; return next; });
+          setCursors(prev => { const next = { ...prev }; delete next[data.name]; return next; });
         }, CURSOR_IDLE_MS + 1500);
       }
 
@@ -238,11 +185,11 @@ function EditorPage() {
           clearTimeout(cursorTimeoutsRef.current[data.name]);
           delete cursorTimeoutsRef.current[data.name];
         }
-        setCursors((prev) => { const next = { ...prev }; delete next[data.name]; return next; });
+        setCursors(prev => { const next = { ...prev }; delete next[data.name]; return next; });
       }
 
       if (data.type === "cursor-leave") {
-        setCursors((prev) => { const next = { ...prev }; delete next[data.name]; return next; });
+        setCursors(prev => { const next = { ...prev }; delete next[data.name]; return next; });
         if (decorationsRef.current[data.name] && editorRef.current) {
           editorRef.current.deltaDecorations(decorationsRef.current[data.name], []);
           delete decorationsRef.current[data.name];
@@ -255,11 +202,15 @@ function EditorPage() {
 
   useEffect(() => {
     if (!editorRef.current) return;
-    Object.values(cursors).forEach((cursor) => {
+    Object.values(cursors).forEach(cursor => {
       const className = `remote-cursor-${cursor.name.replace(/\s/g, "-")}`;
       const styleId   = `style-${className}`;
       let styleEl = document.getElementById(styleId);
-      if (!styleEl) { styleEl = document.createElement("style"); styleEl.id = styleId; document.head.appendChild(styleEl); }
+      if (!styleEl) {
+        styleEl = document.createElement("style");
+        styleEl.id = styleId;
+        document.head.appendChild(styleEl);
+      }
       styleEl.textContent = `
         .${className} { border-left: 2px solid ${cursor.color} !important; margin-left: -1px; position: relative; }
         .${className}::before { content: '${cursor.name}'; position: absolute; top: -18px; left: 0px; background: ${cursor.color}; color: white; font-size: 10px; font-weight: bold; padding: 1px 5px; border-radius: 3px; white-space: nowrap; pointer-events: none; z-index: 999; }
@@ -270,7 +221,7 @@ function EditorPage() {
         [{ range: { startLineNumber: cursor.line, startColumn: cursor.column, endLineNumber: cursor.line, endColumn: cursor.column + 1 }, options: { beforeContentClassName: className, stickiness: 1 } }],
       );
     });
-    Object.keys(decorationsRef.current).forEach((name) => {
+    Object.keys(decorationsRef.current).forEach(name => {
       if (!cursors[name]) {
         editorRef.current.deltaDecorations(decorationsRef.current[name], []);
         delete decorationsRef.current[name];
@@ -284,11 +235,11 @@ function EditorPage() {
     if (chatDiv) chatDiv.scrollTop = chatDiv.scrollHeight;
   }, [messages]);
 
-  // ── Editor handlers 
+  // ── Handlers ──────────────────────────────────────────────────────────────
 
   function handleCodeChange(value) {
     if (isRemoteChange.current) return;
-    setFiles((prev) => treeUpdateNode(prev, activeFileId, () => ({ code: value })));
+    setFiles(prev => prev.map(f => f.id === activeFileId ? { ...f, code: value } : f));
     if (wsRef.current?.readyState === 1) {
       wsRef.current.send(JSON.stringify({ type: "code", code: value, fileId: activeFileId }));
     }
@@ -306,8 +257,8 @@ function EditorPage() {
   }
 
   function handleEditorMount(editor, monaco) {
-    editorRef.current      = editor;
-    monacoRef.current      = monaco;
+    editorRef.current       = editor;
+    monacoRef.current       = monaco;
     editorFileIdRef.current = activeFileId;
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyP, () => {});
     editor.onDidChangeModelContent(() => {
@@ -315,7 +266,7 @@ function EditorPage() {
       const pos = editor.getPosition();
       if (pos) broadcastActiveCursor(pos.lineNumber, pos.column);
     });
-    editor.onDidChangeCursorSelection((e) => {
+    editor.onDidChangeCursorSelection(e => {
       if (isRemoteChange.current || !usernameRef.current) return;
       const sel = e.selection;
       const isEmpty = sel.startLineNumber === sel.endLineNumber && sel.startColumn === sel.endColumn;
@@ -325,14 +276,44 @@ function EditorPage() {
 
   function handleLanguageChange(newLang) {
     const extMap = { python:"py", c:"c", cpp:"cpp", java:"java", typescript:"ts", csharp:"cs", fsharp:"fs", php:"php", ruby:"rb", haskell:"hs", go:"go", rust:"rs", plaintext:"txt" };
-    setFiles((prev) =>
-      treeUpdateNode(prev, activeFileId, (f) => {
-        const base = f.name.includes(".") ? f.name.slice(0, f.name.lastIndexOf(".")) : f.name;
-        return { language: newLang, name: `${base}.${extMap[newLang] || "txt"}` };
-      })
-    );
+    setFiles(prev => prev.map(f => {
+      if (f.id !== activeFileId) return f;
+      const base = f.name.includes(".") ? f.name.slice(0, f.name.lastIndexOf(".")) : f.name;
+      return { ...f, language: newLang, name: `${base}.${extMap[newLang] || "txt"}` };
+    }));
     if (wsRef.current?.readyState === 1) {
       wsRef.current.send(JSON.stringify({ type: "language", language: newLang, changedBy: usernameRef.current, fileId: activeFileId }));
+    }
+  }
+
+  function createNewFile() {
+    if (!newFileName.trim()) return;
+    const ext = newFileName.split(".").pop();
+    const extMap = { py:"python", c:"c", java:"java", cpp:"cpp", ts:"typescript", txt:"plaintext", html:"html", css:"css", json:"json", cs:"csharp", fs:"fsharp", php:"php", rb:"ruby", hs:"haskell", go:"go", rs:"rust" };
+    const newFile = {
+      id: Date.now().toString(),
+      name: newFileName.trim(),
+      language: extMap[ext] || "plaintext",
+      code: "",
+    };
+    setFiles(prev => [...prev, newFile]);
+    setActiveFileId(newFile.id);
+    setNewFileName("");
+    setShowNewFile(false);
+    if (wsRef.current?.readyState === 1)
+      wsRef.current.send(JSON.stringify({ type: "newfile", file: newFile }));
+  }
+
+  // ── Delete file ───────────────────────────────────────────────────────────
+
+  function handleDeleteFile(fileId) {
+    if (files.length <= 1) return; // always keep at least one file
+    const remaining = files.filter(f => f.id !== fileId);
+    setFiles(remaining);
+    if (activeFileId === fileId) setActiveFileId(remaining[0].id);
+    // broadcast delete to collaborators (backend needs to handle "deletefile" type)
+    if (wsRef.current?.readyState === 1) {
+      wsRef.current.send(JSON.stringify({ type: "deletefile", fileId }));
     }
   }
 
@@ -343,29 +324,14 @@ function EditorPage() {
 
   async function executeCode() {
     setOutput("Running...");
-    if (activeLanguage === "javascript") {
+    if (activeFile.language === "javascript") {
       try {
-        // let result = "";
-        // const origLog = console.log;
-        // console.log = (...args) => { result += args.join(" ") + "\n"; };
-        // new Function(activeFile.code)();
-        // console.log = origLog;
-        // setOutput(result || "✅ Ran successfully (no output)");
         let result = "";
         const origLog = console.log;
-
-        try {
-            console.log = (...args) => {
-                result += args.join(" ") + "\n";
-            };
-
-            new Function(activeFile.code)();
-        } finally {
-            console.log = origLog;
-        }
-
+        console.log = (...args) => { result += args.join(" ") + "\n"; };
+        new Function(activeFile.code)();
+        console.log = origLog;
         setOutput(result || "✅ Ran successfully (no output)");
-  
       } catch (err) {
         setOutput("❌ Error: " + err.message);
       }
@@ -376,7 +342,7 @@ function EditorPage() {
       const response = await fetch(`${BACKEND_URL}/run`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ language: activeLanguage, code: activeFile.code }),
+        body: JSON.stringify({ language: activeFile.language, code: activeFile.code }),
       });
       const result = await response.json();
       setOutput(result.output || "✅ Ran successfully (no output)");
@@ -388,7 +354,7 @@ function EditorPage() {
   function sendMessage() {
     if (!newMessage.trim() || wsRef.current?.readyState !== 1) return;
     const msg = { type: "chat", name: username, color: SESSION_COLOR, text: newMessage.trim(), time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) };
-    setMessages((prev) => [...prev, { name: msg.name, color: msg.color, text: msg.text, time: msg.time }]);
+    setMessages(prev => [...prev, { name: msg.name, color: msg.color, text: msg.text, time: msg.time }]);
     wsRef.current.send(JSON.stringify(msg));
     setNewMessage("");
   }
@@ -398,18 +364,14 @@ function EditorPage() {
     input.type = "file";
     input.multiple = true;
     input.accept = ".py,.java,.cpp,.ts,.txt,.html,.css,.json,.c,.cs,.fs,.php,.rb,.hs,.go,.rs";
-    input.onchange = (e) => {
-      Array.from(e.target.files).forEach((file) => {
+    input.onchange = e => {
+      Array.from(e.target.files).forEach(file => {
         const reader = new FileReader();
-        reader.onload = (event) => {
-          const newFile = {
-            id: Date.now().toString() + Math.random(),
-            name: file.name,
-            type: "file",
-            code: event.target.result,
-          };
-          // add to root level
-          setFiles((prev) => [...prev, newFile]);
+        reader.onload = event => {
+          const ext = file.name.split(".").pop();
+          const extMap = { js:"javascript", py:"python", c:"c", java:"java", cpp:"cpp", ts:"typescript", txt:"plaintext", html:"html", css:"css", json:"json", cs:"csharp", fs:"fsharp", php:"php", rb:"ruby", hs:"haskell", go:"go", rs:"rust" };
+          const newFile = { id: Date.now().toString() + Math.random(), name: file.name, language: extMap[ext] || "plaintext", code: event.target.result };
+          setFiles(prev => [...prev, newFile]);
           setActiveFileId(newFile.id);
           if (wsRef.current?.readyState === 1)
             wsRef.current.send(JSON.stringify({ type: "newfile", file: newFile }));
@@ -423,8 +385,7 @@ function EditorPage() {
   async function exportFiles() {
     const JSZip = (await import("jszip")).default;
     const zip = new JSZip();
-    // flatten the tree so every file gets exported, not just root-level ones
-    flattenFiles(files).forEach((f) => zip.file(f.name, f.code || ""));
+    files.forEach(file => zip.file(file.name, file.code || ""));
     const blob = await zip.generateAsync({ type: "blob" });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement("a");
@@ -434,7 +395,7 @@ function EditorPage() {
     URL.revokeObjectURL(url);
   }
 
-  // ── Render 
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", background: "#1e1e1e", fontFamily: "Arial, sans-serif" }}>
@@ -452,8 +413,8 @@ function EditorPage() {
             </div>
             <input
               type="text" placeholder="Your name..." maxLength={20} autoFocus
-              value={username} onChange={(e) => setUsername(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter" && username.trim()) { usernameRef.current = username.trim(); setNameEntered(true); sendJoin(username.trim()); } }}
+              value={username} onChange={e => setUsername(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter" && username.trim()) { usernameRef.current = username.trim(); setNameEntered(true); sendJoin(username.trim()); } }}
               style={{ width: "100%", padding: "14px 16px", background: "#111111", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "14px", color: "white", fontSize: "15px", outline: "none", boxSizing: "border-box", marginBottom: "14px" }}
             />
             <button
@@ -483,15 +444,14 @@ function EditorPage() {
         <span style={{ color: "#888", fontSize: "11px" }}>{connected ? "Connected" : "Disconnected"}</span>
         <span style={{ color: "#888", fontSize: "11px", marginLeft: "4px" }}>👥 {users} online</span>
 
-        {/* language badge — derived from filename, never undefined */}
         <div style={{ marginLeft: "auto", padding: "3px 10px", background: "#1e1e1e", border: "1px solid #444", borderRadius: "6px", color: "#4CAF50", fontSize: "12px", fontWeight: "bold" }}>
-          {activeLanguage.toUpperCase()}
+          {activeFile.language.toUpperCase()}
         </div>
 
-        <button type="button" onClick={importFile}   style={{ padding: "5px 12px", background: "#3a3a3a", color: "white", border: "1px solid #555", borderRadius: "5px", cursor: "pointer", fontSize: "12px" }}>Import</button>
-        <button type="button" onClick={exportFiles}  style={{ padding: "5px 12px", background: "#3a3a3a", color: "white", border: "1px solid #555", borderRadius: "5px", cursor: "pointer", fontSize: "12px" }}>Export</button>
-        <button type="button" onClick={() => setShowChat((p) => !p)} style={{ padding: "5px 12px", background: showChat ? "#2563EB" : "#3a3a3a", color: "white", border: "none", borderRadius: "5px", cursor: "pointer", fontSize: "12px" }}>💬 Chat</button>
-        <button type="button" onClick={handleRunCode} style={{ padding: "5px 16px", background: "#4CAF50", color: "white", border: "none", borderRadius: "5px", cursor: "pointer", fontWeight: "bold", fontSize: "13px" }}>▶ Run</button>
+        <button type="button" onClick={importFile}             style={{ padding: "5px 12px", background: "#3a3a3a", color: "white", border: "1px solid #555", borderRadius: "5px", cursor: "pointer", fontSize: "12px" }}>Import</button>
+        <button type="button" onClick={exportFiles}            style={{ padding: "5px 12px", background: "#3a3a3a", color: "white", border: "1px solid #555", borderRadius: "5px", cursor: "pointer", fontSize: "12px" }}>Export</button>
+        <button type="button" onClick={() => setShowChat(p => !p)} style={{ padding: "5px 12px", background: showChat ? "#2563EB" : "#3a3a3a", color: "white", border: "none", borderRadius: "5px", cursor: "pointer", fontSize: "12px" }}>💬 Chat</button>
+        <button type="button" onClick={handleRunCode}          style={{ padding: "5px 16px", background: "#4CAF50", color: "white", border: "none", borderRadius: "5px", cursor: "pointer", fontWeight: "bold", fontSize: "13px" }}>▶ Run</button>
       </div>
 
       {/* Language Alert */}
@@ -504,11 +464,10 @@ function EditorPage() {
       {/* Main Content */}
       <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
 
-        {/* Activity Bar */}
         <ActivityBar
           activePanel={activePanel}
           setActivePanel={setActivePanel}
-          activeLanguage={activeLanguage}
+          activeLanguage={activeFile.language}
           onLanguageChange={handleLanguageChange}
           users={users}
           username={username}
@@ -516,47 +475,43 @@ function EditorPage() {
           SESSION_COLOR={SESSION_COLOR}
         />
 
-        {/* Side Panel — old props removed, new ones added */}
         <SidePanel
           activePanel={activePanel}
           files={files}
-          setFiles={setFiles}
           activeFileId={activeFileId}
           setActiveFileId={setActiveFileId}
+          showNewFile={showNewFile}
+          setShowNewFile={setShowNewFile}
+          newFileName={newFileName}
+          setNewFileName={setNewFileName}
+          createNewFile={createNewFile}
+          onDeleteFile={handleDeleteFile}
           username={username}
           userList={userList}
           SESSION_COLOR={SESSION_COLOR}
-          // broadcast new file/folder to other collaborators
-          onNewNode={(node) => {
-            if (node.type === "file" && wsRef.current?.readyState === 1) {
-              wsRef.current.send(JSON.stringify({ type: "newfile", file: node }));
-            }
-          }}
         />
 
-        {/* Monaco Editor */}
         <div style={{ flex: 1, overflow: "hidden" }}>
           <Editor
             key={activeFileId}
             height="100%"
-            language={activeLanguage}
-            defaultValue={activeFile.code || ""}
+            language={activeFile.language}
+            defaultValue={activeFile.code}
             onChange={handleCodeChange}
             onMount={handleEditorMount}
             theme="vs-dark"
           />
         </div>
 
-        {/* Output */}
         <div style={{ width: "30%", background: "#1a1a1a", borderLeft: "1px solid #444", padding: "15px", overflowY: "auto" }}>
           <p style={{ color: "#888", margin: "0 0 10px", fontSize: "13px" }}>OUTPUT</p>
           <pre style={{ color: "#00ff88", margin: 0, fontSize: "13px", whiteSpace: "pre-wrap" }}>
             {output || "Click Run to see output..."}
           </pre>
         </div>
+
       </div>
 
-      {/* Chat Panel */}
       {showChat && (
         <ChatPanel
           messages={messages}
