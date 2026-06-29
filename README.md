@@ -1,65 +1,45 @@
-# ⚡ Collab Editor — Real-Time Collaborative Code Editor
+#  Syncra — Real-Time Collaborative Code Editor
 
-> Code together, in real time. No signup. No install. Just share a room code and start collaborating.
+Code together, in real time. Share a 6-character room code — no signup, no install required.
 
-🌐 **Live Demo:** [collab-editor-blond.vercel.app](https://collab-editor-blond.vercel.app)
+🌐 **Live Demo:** [syncra.vercel.app](https://collab-editor-blond.vercel.app)
 
 ---
 
-## What is Collab Editor?
+## Overview
 
-Collab Editor is a real-time collaborative code editor built from scratch. Multiple users can join the same room and write code together — with every keystroke syncing instantly across all screens. Think of it as a shared coding environment where your whole team can see, edit, and run code at the same time.
-
-Built entirely by a 6th semester CSE student as a passion project to solve a real problem: **there is no simple, free, no-signup tool for coding together online.**
+Syncra is a browser-based collaborative code editor. Multiple users join the same room using a 6-character code and write code together — every keystroke syncs instantly across all screens, with live cursors showing exactly where each person is working.
 
 ---
 
 ## Features
 
-### 👥 Real-Time Collaboration
-- Every keystroke syncs **instantly** across all users in the same room
-- No delay, no refresh needed — changes appear as you type
-- Built using **WebSockets** for persistent, low-latency communication
-- Room-based isolation — only people with your room code can join
+###  Real-Time Code Sync
+Every keystroke syncs instantly across all users in the same room. Built on persistent WebSocket connections for under 50ms latency. Room-based isolation — only people with your room code can join.
 
-### 🖱️ Live Cursors
-- See **exactly where** every teammate is typing
-- Each user gets a unique color and name label
-- Cursor positions broadcast in real time using WebSocket messages
+### 🖱️ Live Colored Cursors
+Each user gets a unique color and name label above their cursor position in the editor. Cursors auto-hide after 3.5 seconds of inactivity using a sender-side idle timer.
 
 ### 💬 Built-in Chat
-- WhatsApp-style floating chat panel
-- Send messages without leaving the editor
-- Messages show sender name, color, and timestamp
-- Auto-scrolls to latest message
+A floating chat panel sits alongside the editor. Messages show sender name, color, and timestamp. Auto-scrolls to latest message.
 
-### 📁 File Tree
-- Create **multiple files** per room — just like VS Code
-- Supports `.js`, `.py`, `.java`, `.cpp`, `.ts`, `.html`, `.css`, `.json`
-- Language auto-detected from file extension
-- Switch between files — all synced in real time across users
+### 📁 VS Code-Style File Tree
+A VS Code-inspired Activity Bar on the left — click the file icon to open the explorer, click the users icon to see who is online. Create multiple files per room, language auto-detected from file extension. All files sync in real time.
+
+### ▶ Code Execution — 12 Languages
+Run code via a sandboxed execution API. Supported languages:
+
+| | | | |
+|---|---|---|---|
+| Python | C | C++ | Java |
+| TypeScript | C# | F# | PHP |
+| Ruby | Haskell | Go | Rust |
 
 ### 📂 Import & Export
-- **Import** any file from your laptop directly into the editor
-- **Export** all files as a single ZIP download
-- Imported files sync instantly to all users in the room
-
-### ▶ Code Execution
-- Run **JavaScript, Python, Java, C++** right in the browser
-- Secure Docker-sandboxed execution environment
-- Output panel shows results instantly
-- Memory and CPU limits per execution for safety
+Upload files from your laptop directly into the editor. Download all files as a ZIP. Imported files sync to all users instantly.
 
 ### 🔐 Room System
-- Every room gets a unique **6-character code**
-- Share the code — teammates join instantly
-- Late joiners automatically receive all existing code and files
-- Users panel shows everyone currently in the room
-
-### 🌐 Language Support
-- JavaScript, Python, Java, C++, TypeScript
-- Syntax highlighting powered by **Monaco Editor** (same engine as VS Code)
-- Language change notification — see when teammates switch languages
+Every room gets a unique 6-character code. Late joiners receive full file state immediately. Duplicate usernames are rejected within a room.
 
 ---
 
@@ -68,62 +48,95 @@ Built entirely by a 6th semester CSE student as a passion project to solve a rea
 ### Frontend
 | Technology | Purpose |
 |---|---|
-| React (Vite) | UI framework |
-| Monaco Editor | VS Code-grade code editor in browser |
-| React Router | Client-side routing |
+| React 18 + Vite | UI framework |
+| Monaco Editor | VS Code editor engine |
+| React Router v6 | Client-side routing |
 | WebSocket API | Real-time communication |
-| JSZip | Export files as ZIP |
+| JSZip | ZIP export |
 
 ### Backend
 | Technology | Purpose |
 |---|---|
-| Node.js | Server runtime |
-| Express | HTTP server + API routes |
-| WebSocket (ws) | Real-time bidirectional communication |
-| Docker | Sandboxed code execution |
+| Node.js + Express | HTTP server and REST API |
+| ws | WebSocket server |
+| onlinecompiler.io | Sandboxed code execution |
 
 ### Deployment
 | Service | Purpose |
 |---|---|
-| Vercel | Frontend hosting |
-| Render | Backend hosting |
-| GitHub | Version control |
+| Vercel | Frontend |
+| Render | Backend |
+
+---
+
+## Project Structure
+
+```
+syncra/
+├── collab-editor-frontend/
+│   └── src/
+│       ├── App.jsx              ← Router
+│       ├── constants.js         ← Config (languages, colors, URLs)
+│       ├── pages/
+│       │   ├── Landing.jsx      ← Landing page
+│       │   └── EditorPage.jsx   ← Editor + all logic
+│       └── components/
+│           ├── ActivityBar.jsx  ← VS Code-style icon sidebar
+│           ├── SidePanel.jsx    ← File explorer + users panel
+│           └── ChatPanel.jsx    ← Chat popup
+│
+└── collab-backend/
+    ├── server.js                ← WebSocket server + room management
+    └── executor.js              ← Code execution via API
+```
 
 ---
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                    Browser (React)                  │
-│  Monaco Editor + File Tree + Chat + Users Panel     │
-└──────────────────────┬──────────────────────────────┘
-                       │ WebSocket (wss://)
-                       │ HTTP (https://)
-┌──────────────────────▼──────────────────────────────┐
-│              Node.js + Express Backend              │
-│  Room Management + WebSocket Server + Code Executor │
-└──────────────────────┬──────────────────────────────┘
-                       │
-┌──────────────────────▼──────────────────────────────┐
-│              Docker Containers                      │
-│  node:18 | python:3.11 | openjdk:17 | gcc:latest    │
-└─────────────────────────────────────────────────────┘
+Browser (React)
+  │
+  ├── WebSocket (wss://) ──► Node.js Backend
+  │                              │
+  │                              ├── Room Manager (Map + Set)
+  │                              ├── File State (per room)
+  │                              └── User List (per room)
+  │
+  └── HTTP POST /run ──────► Node.js Backend
+                                 │
+                                 └── onlinecompiler.io API
+                                       (isolated sandboxes)
 ```
 
-### How real-time sync works:
+### Sync flow:
 ```
-User A types code
-    ↓
-Frontend sends WebSocket message
-    { type: 'code', code: '...', fileId: '...' }
-    ↓
-Backend receives → saves to room memory
-    ↓
-Backend broadcasts to all other users in room
-    ↓
-User B and C see the change instantly
+User types
+  → WebSocket sends { type: 'code', code, fileId }
+  → Backend saves to room memory
+  → Backend broadcasts to all others in room
+  → Monaco model updated via minimal diff (not full replace)
+  → Changes appear in under 50ms
 ```
+
+---
+
+## Key Technical Decisions
+
+### 1. Minimal diff model updates
+Instead of replacing the entire Monaco document on each remote change (which resets cursor position), a common-prefix/suffix diff is applied — only the changed range is replaced. This keeps every user's cursor stable when someone else edits elsewhere.
+
+### 2. Preventing infinite sync loops
+When remote code arrives, Monaco's `onChange` would fire and resend the code — creating an infinite loop. Solved with an `isRemoteChange` ref set synchronously around every remote model update.
+
+### 3. Late user synchronization
+When a new user connects, the backend immediately sends the full file state (`init`) and current user list — so late joiners see everything without anyone resending.
+
+### 4. Duplicate username prevention
+Before accepting a join, the backend checks all existing names in the room. If taken, a `name-taken` message is sent back and the user is prompted to choose a different name.
+
+### 5. Cursor idle detection
+Remote cursors auto-hide after 3.5s using a sender-side idle timer that emits `cursor-stop`, with a receiver-side safety timeout as backup.
 
 ---
 
@@ -131,66 +144,61 @@ User B and C see the change instantly
 
 ### Prerequisites
 - Node.js 18+
-- Docker Desktop
 - Git
 
-### Clone the repo
+### Setup
+
 ```bash
-git clone https://github.com/YOURUSERNAME/collab-editor.git
+git clone https://github.com/user1-prajwal/collab-editor.git
 cd collab-editor
 ```
 
-### Start the backend
+**Backend:**
 ```bash
 cd collab-backend
 npm install
+# Create .env file:
+# ONLINECOMPILER_API_KEY=your_key_here
 node server.js
 ```
 
-### Start the frontend
+**Frontend:**
 ```bash
 cd collab-editor-frontend
 npm install
 npm run dev
 ```
 
-Open `http://localhost:5173` in your browser!
+Open `http://localhost:5173`
+
+### Environment Variables
+
+`collab-backend/.env`
+```
+ONLINECOMPILER_API_KEY=your_key_here
+PORT=4000
+```
+
+Get a free API key at [onlinecompiler.io](https://onlinecompiler.io)
 
 ---
 
-## How to Use
+## Planned
 
-1. Open the app and click **"Create New Room"**
-2. A unique 6-letter room code is generated
-3. Share the code with your teammates
-4. They go to the app, enter the code, and click **"Join Room"**
-5. Everyone enters their name and starts coding together!
-
----
-
-## Planned Features
-
-- [ ] TypeScript execution support
-- [ ] Teacher/Student mode (admin controls editor, others view only)
-- [ ] Session playback — replay how code was written
-- [ ] Persistent rooms with database storage
-- [ ] Voice/video chat integration
-- [ ] GitHub integration — push code directly to a repo
+- [ ] AI code analysis (Gemini API)
+- [ ] Teacher/Student mode — read-only access for viewers
+- [ ] Session playback
+- [ ] Persistent rooms (database)
+- [ ] WebRTC voice chat
 
 ---
 
-## Key Technical Challenges Solved
+## License
 
-### 1. Preventing infinite sync loops
-When User B receives code from the server and the editor updates, Monaco's `onChange` fires again — which would send the code back to the server, creating an infinite loop. Solved using an `isRemoteChange` ref flag that skips sending when the update came from the server.
-
-### 2. Late user synchronization
-When a new user joins a room where others are already coding, they need to see all existing code and files immediately. Solved by making the backend store the complete file state per room and sending it as an `init` message to every new connection.
-
-### 3. Multi-file real-time sync
-Each file has its own ID. Code changes are tagged with `fileId` so the backend and all clients know which file to update — allowing multiple files to sync independently in real time.
-
-### 4. WebSocket Blob handling
-WebSocket messages sometimes arrive as binary Blob instead of plain text. Solved using `async/await` to convert Blob to text before JSON parsing.
+MIT — see [LICENSE](LICENSE)
 
 ---
+
+## About
+
+Built by [Prajwal Poojari](https://github.com/user1-prajwal) · [LinkedIn](https://www.linkedin.com/in/user1-prajwal451/) · [Report a Bug](https://github.com/user1-prajwal/collab-editor/issues)
