@@ -103,6 +103,14 @@ function EditorPage() {
       const data = JSON.parse(text);
 
       if (data.type === "code") {
+
+          if (data.sentAt) {
+            const latency = Date.now() - data.sentAt
+            console.log(`Sync latency: ${latency}ms`)
+          }
+
+
+
         setFiles(prev => prev.map(f => f.id === data.fileId ? { ...f, code: data.code } : f));
         if (data.fileId === editorFileIdRef.current && editorRef.current && monacoRef.current) {
           const model = editorRef.current.getModel();
@@ -263,7 +271,7 @@ function EditorPage() {
     if (isRemoteChange.current) return;
     setFiles(prev => prev.map(f => f.id === activeFileId ? { ...f, code: value } : f));
     if (wsRef.current?.readyState === 1) {
-      wsRef.current.send(JSON.stringify({ type: "code", code: value, fileId: activeFileId }));
+      wsRef.current.send(JSON.stringify({ type: "code", code: value, fileId: activeFileId, sentAt: Date.now() }));
     }
   }
 
