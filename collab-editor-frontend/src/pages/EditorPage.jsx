@@ -62,6 +62,7 @@ function EditorPage() {
   const [activeFileId,  setActiveFileId]  = useState("1");
   const [showNewFile,   setShowNewFile]   = useState(false);
   const [newFileName,   setNewFileName]   = useState("");
+  const [initReceived, setInitReceived] = useState(false);
 
   const wsRef             = useRef(null);
   const isRemoteChange    = useRef(false);
@@ -127,6 +128,7 @@ function EditorPage() {
         if (data.files) {
           setFiles(data.files);
           setActiveFileId(data.files[0].id);
+          setInitReceived(true);
         }
         // When a new user joins, the server sends existing room members
         // inside init. Without this line the new joiner never sees anyone
@@ -530,6 +532,7 @@ function EditorPage() {
             onChange={handleCodeChange}
             onMount={handleEditorMount}
             theme="vs-dark"
+            key={`${activeFileId}-${initReceived}`}
           />
         </div>
 
