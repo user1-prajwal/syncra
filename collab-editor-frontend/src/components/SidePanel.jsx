@@ -7,7 +7,7 @@ const LANG_ICONS = {
   cpp:        '/lang_icons/c++.png',
   java:       '/lang_icons/java.png',
   typescript: '/lang_icons/typescript.png',
-  csharp:     '/lang_icons/csharp.png',
+  csharp:     '/lang_icons/c-sharp.png',
   fsharp:     '/lang_icons/fsharp.png',
   php:        '/lang_icons/php.png',
   ruby:       '/lang_icons/ruby.png',
