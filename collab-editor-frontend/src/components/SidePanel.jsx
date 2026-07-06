@@ -8,7 +8,7 @@ const LANG_ICONS = {
   java:       '/lang_icons/java.png',
   typescript: '/lang_icons/typescript.png',
   csharp:     '/lang_icons/c-sharp.png',
-  fsharp:     '/lang_icons/fsharp.png',
+  fsharp:     '/lang_icons/FSharp.png',
   php:        '/lang_icons/php.png',
   ruby:       '/lang_icons/ruby.png',
   haskell:    '/lang_icons/haskell.png',
