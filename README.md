@@ -2,7 +2,7 @@
 
 Code together, in real time. Share a 6-character room code — no signup, no install required.
 
-🌐 **Live Demo:** [syncra.vercel.app](https://collab-editor-blond.vercel.app)
+🌐 **Live Demo:** [syncra-collab.vercel.app](https://syncra-collab.vercel.app/)
 
 ---
 
