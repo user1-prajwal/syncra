@@ -1,7 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 
-// ─── INJECT GLOBAL CSS ONCE
 function injectGlobal() {
   if (document.getElementById("ce-global")) return;
   const s = document.createElement("style");
@@ -14,35 +13,35 @@ function injectGlobal() {
     @keyframes blink   { 0%,49%{opacity:1} 50%,100%{opacity:0} }
     @keyframes pulse   { 0%,100%{opacity:1} 50%{opacity:0.3} }
     @keyframes floatUp { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
-    @keyframes fadeIn  { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
-    @keyframes spin    { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
-    @keyframes slideIn { from{opacity:0;transform:translateX(-10px)} to{opacity:1;transform:translateX(0)} }
-    .ce-card { transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s; }
-    .ce-card:hover { border-color: rgba(99,102,241,0.4) !important; transform: translateY(-3px); box-shadow: 0 12px 32px rgba(0,0,0,0.4); }
+    @keyframes fadeIn  { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes slideIn { from{opacity:0;transform:translateX(-8px)} to{opacity:1;transform:translateX(0)} }
+    @keyframes popIn   { 0%{opacity:0;transform:scale(0.9) translateY(4px)} 100%{opacity:1;transform:scale(1) translateY(0)} }
     .ce-btn-primary { transition: background 0.15s, transform 0.1s, box-shadow 0.15s; }
-    .ce-btn-primary:hover { background: #818CF8 !important; transform: translateY(-1px); box-shadow: 0 3px 12px rgba(48, 48, 66, 0.4); }
+    .ce-btn-primary:hover { background: #818CF8 !important; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(99,102,241,0.3); }
     .ce-btn-primary:active { transform: translateY(0); }
     .ce-btn-ghost { transition: border-color 0.15s, color 0.15s; }
     .ce-btn-ghost:hover { border-color: rgba(99,102,241,0.5) !important; color: #F8FAFC !important; }
     .ce-nav-link { transition: color 0.15s; }
     .ce-nav-link:hover { color: #F8FAFC !important; }
-    .ce-faq-btn { transition: color 0.15s; }
     .ce-faq-btn:hover { color: #818CF8 !important; }
     .ce-input:focus { border-color: rgba(99,102,241,0.6) !important; }
     .ce-social:hover { border-color: rgba(99,102,241,0.5) !important; color: #F8FAFC !important; }
-    .ce-step-card { transition: border-color 0.2s; }
-    .ce-step-card:hover { border-color: rgba(99,102,241,0.35) !important; }
+    .feat-card { transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s; }
+    .feat-card:hover { border-color: rgba(99,102,241,0.35) !important; transform: translateY(-2px); box-shadow: 0 8px 28px rgba(0,0,0,0.35); }
+    .step-card { transition: border-color 0.25s, box-shadow 0.25s; }
+    .step-card:hover { border-color: rgba(99,102,241,0.3) !important; box-shadow: 0 16px 48px rgba(0,0,0,0.4); }
     @media (max-width: 768px) {
       .hero-grid { flex-direction: column !important; }
       .hero-left { width: 100% !important; }
       .hero-right { display: none !important; }
       .hide-mobile { display: none !important; }
+      .steps-grid { grid-template-columns: 1fr !important; }
     }
   `;
   document.head.appendChild(s);
 }
 
-// ─── TINY ICONS
+// ─── ICONS
 const Ico = {
   Bolt: (p) => (
     <svg
@@ -169,6 +168,21 @@ const Ico = {
       <path d="M12 5v14M5 12h14" />
     </svg>
   ),
+  Copy: (p) => (
+    <svg
+      width={p.s || 14}
+      height={p.s || 14}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={p.c || "currentColor"}
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="9" y="9" width="13" height="13" rx="2" />
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+    </svg>
+  ),
   Github: (p) => (
     <svg
       width={p.s || 16}
@@ -191,8 +205,474 @@ const Ico = {
   ),
 };
 
-// ─── EDITOR PREVIEW
-const LINES = [
+// ─── STEP VISUAL 1: animated room-code generator
+function RoomCodeVisual() {
+  const CODE = "K9MX2A";
+  const [revealed, setRevealed] = useState(0);
+  const [done, setDone] = useState(false);
+  const timers = useRef([]);
+
+  useEffect(() => {
+    function clearAll() {
+      timers.current.forEach(clearTimeout);
+      timers.current = [];
+    }
+    function cycle() {
+      clearAll();
+      setRevealed(0);
+      setDone(false);
+      CODE.split("").forEach((_, i) => {
+        const t = setTimeout(() => setRevealed(i + 1), 500 + i * 170);
+        timers.current.push(t);
+      });
+      const d = setTimeout(() => setDone(true), 500 + CODE.length * 170 + 80);
+      timers.current.push(d);
+      const r = setTimeout(cycle, 500 + CODE.length * 170 + 2800);
+      timers.current.push(r);
+    }
+    cycle();
+    return clearAll;
+  }, []);
+
+  return (
+    <div
+      style={{
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "18px",
+        padding: "24px 20px",
+      }}
+    >
+      {/* 6 character boxes */}
+      <div style={{ display: "flex", gap: "7px" }}>
+        {CODE.split("").map((ch, i) => (
+          <div
+            key={i}
+            style={{
+              width: "40px",
+              height: "50px",
+              borderRadius: "8px",
+              background: i < revealed ? "rgba(99,102,241,0.14)" : "#0C0C14",
+              border: `1px solid ${i < revealed ? "rgba(99,102,241,0.5)" : "rgba(255,255,255,0.05)"}`,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "19px",
+              fontWeight: "800",
+              fontFamily: '"JetBrains Mono","Fira Code",monospace',
+              color: i < revealed ? "#F8FAFC" : "#1C1C28",
+              transition: "all 0.14s ease",
+              transform: i < revealed ? "translateY(0)" : "translateY(4px)",
+            }}
+          >
+            {i < revealed ? ch : "·"}
+          </div>
+        ))}
+      </div>
+      {/* Status badge */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+          padding: "8px 18px",
+          borderRadius: "8px",
+          background: done ? "rgba(16,185,129,0.08)" : "rgba(99,102,241,0.06)",
+          border: `1px solid ${done ? "rgba(16,185,129,0.22)" : "rgba(99,102,241,0.12)"}`,
+          transition: "all 0.4s ease",
+          minWidth: "210px",
+          justifyContent: "center",
+        }}
+      >
+        <div
+          style={{
+            width: 7,
+            height: 7,
+            // borderRadius: "50%",
+            flexShrink: 0,
+            background: done ? "#10B981" : "#6366F1",
+            animation: done ? "none" : "pulse 1s infinite",
+          }}
+        />
+        <span
+          style={{
+            color: done ? "#10B981" : "#818CF8",
+            fontSize: "12px",
+            fontWeight: 600,
+            whiteSpace: "nowrap",
+          }}
+        >
+          {done ? "Room ready — share this code" : "Generating your room…"}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// ─── STEP VISUAL 2: teammates joining one by one
+ const USERS = [
+    { name: "Alex", color: "#34D399", role: "Frontend" },
+    { name: "Maya", color: "#F472B6", role: "Backend" },
+    { name: "Ravi", color: "#60A5FA", role: "DevOps" },
+  ];
+function ShareVisual() {
+  // const USERS = [
+  //   { name: "Alex", color: "#34D399", role: "Frontend" },
+  //   { name: "Maya", color: "#F472B6", role: "Backend" },
+  //   { name: "Ravi", color: "#60A5FA", role: "DevOps" },
+  // ];
+  const [count, setCount] = useState(0);
+  const timers = useRef([]);
+
+  useEffect(() => {
+    function clearAll() {
+      timers.current.forEach(clearTimeout);
+      timers.current = [];
+    }
+    function cycle() {
+      clearAll();
+      setCount(0);
+      USERS.forEach((_, i) => {
+        const t = setTimeout(() => setCount(i + 1), 600 + i * 850);
+        timers.current.push(t);
+      });
+      const r = setTimeout(cycle, 600 + USERS.length * 850 + 1800);
+      timers.current.push(r);
+    }
+    cycle();
+    return clearAll;
+  }, []);
+
+  return (
+    <div
+      style={{
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "center",
+        gap: "8px",
+        padding: "20px 22px",
+      }}
+    >
+      {/* Room header */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+          padding: "8px 12px",
+          background: "rgba(255,255,255,0.02)",
+          border: "1px solid rgba(255,255,255,0.05)",
+          borderRadius: "8px",
+          marginBottom: "4px",
+        }}
+      >
+        <span style={{ color: "#52525B", fontSize: "11px" }}>Room</span>
+        <span
+          style={{
+            color: "#FCD34D",
+            fontFamily: "monospace",
+            fontWeight: 700,
+            letterSpacing: "3px",
+            fontSize: "12px",
+          }}
+        >
+          K9MX2A
+        </span>
+        <div
+          style={{
+            marginLeft: "auto",
+            display: "flex",
+            alignItems: "center",
+            gap: "5px",
+          }}
+        >
+          <div
+            style={{
+              width: 6,
+              height: 6,
+              borderRadius: "50%",
+              background: "#10B981",
+              animation: "pulse 2s infinite",
+            }}
+          />
+          <span style={{ color: "#10B981", fontSize: "11px", fontWeight: 600 }}>
+            live
+          </span>
+        </div>
+      </div>
+      {/* User rows */}
+      {USERS.map((u, i) => (
+        <div
+          key={u.name}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            padding: "10px 12px",
+            borderRadius: "8px",
+            background: i < count ? `${u.color}08` : "rgba(255,255,255,0.015)",
+            border: `1px solid ${i < count ? `${u.color}28` : "rgba(255,255,255,0.04)"}`,
+            opacity: i < count ? 1 : 0.2,
+            transform: i < count ? "translateX(0)" : "translateX(-10px)",
+            transition: "all 0.4s cubic-bezier(0.34,1.4,0.64,1)",
+          }}
+        >
+          <div
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: "50%",
+              background: `${u.color}18`,
+              border: `1.5px solid ${u.color}45`,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: u.color,
+              fontSize: "11px",
+              fontWeight: 700,
+              flexShrink: 0,
+            }}
+          >
+            {u.name[0]}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div
+              style={{ color: "#D4D4D8", fontSize: "13px", fontWeight: 600 }}
+            >
+              {u.name}
+            </div>
+            <div style={{ color: "#52525B", fontSize: "11px" }}>{u.role}</div>
+          </div>
+          <div
+            style={{
+              padding: "3px 9px",
+              borderRadius: "20px",
+              background: i < count ? `${u.color}18` : "transparent",
+              color: i < count ? u.color : "transparent",
+              fontSize: "11px",
+              fontWeight: 700,
+              transition: "all 0.3s",
+              whiteSpace: "nowrap",
+            }}
+          >
+            joined
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── STEP VISUAL 3: live mini dual-cursor editor
+function LiveCodeVisual() {
+  const LINES = [
+    { code: "function add(a, b) {", cursor: null },
+    { code: "  return a + b", cursor: "alex" },
+    { code: "}", cursor: null },
+    { code: "", cursor: null },
+    { code: "console.log(add(1,2))", cursor: "maya" },
+  ];
+  const TOTAL = LINES.reduce((s, l) => s + l.code.length, 0);
+  const [typed, setTyped] = useState(0);
+  const [output, setOutput] = useState(false);
+  const rafRef = useRef(null);
+  const startRef = useRef(null);
+
+  useEffect(() => {
+    const CYCLE = 4200,
+      TYPE_END = 2600;
+    function tick(ts) {
+      if (!startRef.current) startRef.current = ts;
+      const phase = (ts - startRef.current) % CYCLE;
+      if (phase < TYPE_END) {
+        setTyped(Math.floor((phase / TYPE_END) * TOTAL));
+        setOutput(false);
+      } else {
+        setTyped(TOTAL);
+        setOutput(true);
+      }
+      rafRef.current = requestAnimationFrame(tick);
+    }
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [TOTAL]);
+
+  let rem = typed;
+  const rendered = LINES.map((l) => {
+    const show = Math.min(rem, l.code.length);
+    rem = Math.max(0, rem - l.code.length);
+    return { ...l, show };
+  });
+
+  const CURSORS = { alex: "#34D399", maya: "#F472B6" };
+
+  return (
+    <div
+      style={{
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        padding: "16px 18px",
+        overflow: "hidden",
+      }}
+    >
+      {/* Peer bar */}
+      <div
+        style={{
+          display: "flex",
+          gap: "6px",
+          marginBottom: "12px",
+          flexShrink: 0,
+        }}
+      >
+        {[
+          { name: "Alex", color: "#34D399" },
+          { name: "Maya", color: "#F472B6" },
+        ].map((u) => (
+          <div
+            key={u.name}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "5px",
+              padding: "2px 9px",
+              borderRadius: "20px",
+              background: `${u.color}12`,
+              border: `1px solid ${u.color}30`,
+            }}
+          >
+            <div
+              style={{
+                width: 5,
+                height: 5,
+                borderRadius: "50%",
+                background: u.color,
+                animation: "pulse 2s infinite",
+              }}
+            />
+            <span style={{ color: u.color, fontSize: "10px", fontWeight: 700 }}>
+              {u.name}
+            </span>
+          </div>
+        ))}
+        <span
+          style={{
+            marginLeft: "auto",
+            color: "#374151",
+            fontSize: "10px",
+            alignSelf: "center",
+          }}
+        >
+          index.js
+        </span>
+      </div>
+      {/* Code lines */}
+      <div
+        style={{
+          flex: 1,
+          fontFamily: '"JetBrains Mono","Fira Code",monospace',
+          fontSize: "11.5px",
+          overflow: "hidden",
+        }}
+      >
+        {rendered.map((line, i) => (
+          <div
+            key={i}
+            style={{ display: "flex", minHeight: "19px", alignItems: "center" }}
+          >
+            <span
+              style={{
+                color: "#2D3748",
+                width: "22px",
+                textAlign: "right",
+                paddingRight: "10px",
+                fontSize: "10px",
+                flexShrink: 0,
+                userSelect: "none",
+              }}
+            >
+              {i + 1}
+            </span>
+            <span style={{ color: "#C9D1D9", whiteSpace: "pre" }}>
+              {line.code.slice(0, line.show)}
+              {line.show === line.code.length && line.cursor && (
+                <span
+                  style={{
+                    display: "inline-block",
+                    width: "2px",
+                    height: "13px",
+                    background: CURSORS[line.cursor],
+                    verticalAlign: "middle",
+                    marginLeft: "1px",
+                    animation: "blink 1s steps(1) infinite",
+                  }}
+                />
+              )}
+            </span>
+          </div>
+        ))}
+      </div>
+      {/* Output */}
+      <div
+        style={{
+          flexShrink: 0,
+          marginTop: "10px",
+          padding: "7px 12px",
+          borderRadius: "7px",
+          background: output
+            ? "rgba(16,185,129,0.08)"
+            : "rgba(255,255,255,0.02)",
+          border: `1px solid ${output ? "rgba(16,185,129,0.22)" : "rgba(255,255,255,0.05)"}`,
+          transition: "all 0.35s",
+          display: "flex",
+          alignItems: "center",
+          gap: "10px",
+        }}
+      >
+        <span
+          style={{
+            color: "#374151",
+            fontSize: "10px",
+            fontFamily: "monospace",
+            fontWeight: 700,
+          }}
+        >
+          ›
+        </span>
+        <span
+          style={{
+            color: output ? "#10B981" : "#374151",
+            fontSize: "12px",
+            fontFamily: "monospace",
+            fontWeight: 700,
+            transition: "color 0.35s",
+          }}
+        >
+          {output ? "3" : "—"}
+        </span>
+        {output && (
+          <span
+            style={{
+              color: "#10B981",
+              fontSize: "11px",
+              marginLeft: "4px",
+              animation: "fadeIn 0.3s ease",
+            }}
+          >
+            All changes saved
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// EDITOR PREVIEW (hero right panel)
+const PREV_LINES = [
   {
     tokens: [
       { t: "const ", c: "#818CF8" },
@@ -221,13 +701,13 @@ const LINES = [
   },
   { tokens: [{ t: "})", c: "#E2E8F0" }] },
 ];
-const CHARS = LINES.flatMap((line, li) =>
-  line.tokens.flatMap((tok) =>
+const PREV_CHARS = PREV_LINES.flatMap((l, li) =>
+  l.tokens.flatMap((tok) =>
     tok.t.split("").map((ch) => ({ ch, c: tok.c, li })),
   ),
 );
-const TOTAL = CHARS.length;
-const PEERS = [
+const PREV_TOTAL = PREV_CHARS.length;
+const PEERS_HERO = [
   { name: "Alex", color: "#34D399" },
   { name: "Maya", color: "#F472B6" },
   { name: "Ravi", color: "#60A5FA" },
@@ -235,11 +715,11 @@ const PEERS = [
 
 function EditorPreview() {
   const [n, setN] = useState(0);
-  const [peerIdx, setPeerIdx] = useState(0);
+  const [pi, setPi] = useState(0);
   useEffect(() => {
-    const t = setInterval(() => setN((v) => (v >= TOTAL ? 0 : v + 2)), 55);
+    const t = setInterval(() => setN((v) => (v >= PREV_TOTAL ? 0 : v + 2)), 55);
     const p = setInterval(
-      () => setPeerIdx((v) => (v + 1) % PEERS.length),
+      () => setPi((v) => (v + 1) % PEERS_HERO.length),
       1800,
     );
     return () => {
@@ -247,14 +727,12 @@ function EditorPreview() {
       clearInterval(p);
     };
   }, []);
-  const renderedLines = LINES.map((_, li) => {
-    const lineStart = CHARS.findIndex((ch) => ch.li === li);
-    const lineChars = CHARS.filter((ch) => ch.li === li);
-    const visible =
-      lineStart < 0 ? [] : lineChars.slice(0, Math.max(0, n - lineStart));
-    return visible;
+  const renderedLines = PREV_LINES.map((_, li) => {
+    const ls = PREV_CHARS.findIndex((c) => c.li === li);
+    const lc = PREV_CHARS.filter((c) => c.li === li);
+    return ls < 0 ? [] : lc.slice(0, Math.max(0, n - ls));
   });
-  const activePeer = PEERS[peerIdx];
+  const ap = PEERS_HERO[pi];
   return (
     <div
       style={{
@@ -316,7 +794,7 @@ function EditorPreview() {
               fontWeight: 600,
             }}
           >
-            {PEERS.length} live
+            {PEERS_HERO.length} live
           </span>
         </div>
       </div>
@@ -329,7 +807,7 @@ function EditorPreview() {
           gap: "7px",
         }}
       >
-        {PEERS.map((peer, i) => (
+        {PEERS_HERO.map((peer, i) => (
           <div
             key={peer.name}
             style={{
@@ -360,7 +838,7 @@ function EditorPreview() {
             >
               {peer.name}
             </span>
-            {i === peerIdx && (
+            {i === pi && (
               <span
                 style={{ color: peer.color, fontSize: "10px", opacity: 0.7 }}
               >
@@ -403,13 +881,13 @@ function EditorPreview() {
                   {ch.ch}
                 </span>
               ))}
-              {li === peerIdx % LINES.length && chars.length > 0 && (
+              {li === pi % PREV_LINES.length && chars.length > 0 && (
                 <span
                   style={{
                     display: "inline-block",
                     width: "2px",
                     height: "14px",
-                    background: activePeer.color,
+                    background: ap.color,
                     verticalAlign: "middle",
                     marginLeft: "1px",
                     animation: "blink 1s steps(1) infinite",
@@ -463,7 +941,7 @@ function EditorPreview() {
   );
 }
 
-// ─── NAVBAR
+//  NAVBAR
 function Navbar({ onOpen }) {
   const [pinned, setPinned] = useState(false);
   useEffect(() => {
@@ -492,39 +970,11 @@ function Navbar({ onOpen }) {
         transition: "all 0.25s",
       }}
     >
-      {/* <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-        <div
-          style={{
-            width: 28,
-            height: 28,
-            borderRadius: "7px",
-            background: "#6366F1",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <Ico.Bolt s={14} c="#fff" />
-        </div>
-        <span
-          style={{
-            color: "#F8FAFC",
-            fontWeight: 700,
-            fontSize: "15px",
-            letterSpacing: "-0.3px",
-          }}
-        >
-          Collab Editor
-        </span>
-      </div> */}
-
-      <div style={{ display: "flex", alignItems: "center" }}>
       <img
         src="/syncra-logo-dark.svg"
         alt="Syncra"
-        style={{ height: "32px" }}
+        style={{ height: "30px" }}
       />
-    </div>
       <div className="hide-mobile" style={{ display: "flex", gap: "28px" }}>
         {[
           ["#features", "Features"],
@@ -570,7 +1020,7 @@ function Navbar({ onOpen }) {
   );
 }
 
-// ─── HERO
+//  HERO
 function Hero({ onOpen }) {
   const [code, setCode] = useState("");
   const [err, setErr] = useState("");
@@ -619,7 +1069,6 @@ function Hero({ onOpen }) {
           gap: "56px",
         }}
       >
-        {/* LEFT */}
         <div
           className="hero-left"
           style={{
@@ -630,7 +1079,7 @@ function Hero({ onOpen }) {
         >
           <h1
             style={{
-              fontSize: "clamp(36px, 5vw, 56px)",
+              fontSize: "clamp(36px,5vw,56px)",
               fontWeight: 900,
               lineHeight: 1.06,
               letterSpacing: "-2px",
@@ -756,25 +1205,22 @@ function Hero({ onOpen }) {
             </p>
           )}
           <div style={{ display: "flex", gap: "18px", flexWrap: "wrap" }}>
-            {["No login needed", "Runs in your browser", "Free forever"].map(
-              (t) => (
-                <span
-                  key={t}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "5px",
-                    color: "#6B7280",
-                    fontSize: "13px",
-                  }}
-                >
-                  <Ico.Check s={13} c="#10B981" /> {t}
-                </span>
-              ),
-            )}
+            {["No login needed", "12 languages", "AI-powered"].map((t) => (
+              <span
+                key={t}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "5px",
+                  color: "#6B7280",
+                  fontSize: "13px",
+                }}
+              >
+                <Ico.Check s={13} c="#10B981" /> {t}
+              </span>
+            ))}
           </div>
         </div>
-        {/* RIGHT */}
         <div
           className="hero-right"
           style={{
@@ -854,53 +1300,53 @@ function Hero({ onOpen }) {
   );
 }
 
-// ─── FEATURES
+// FEATURES  bg #0E0E13
 function Features() {
   const list = [
     {
       Icon: Ico.Users,
       color: "#6366F1",
-      title: "See everyone typing",
-      desc: "Every keystroke syncs instantly. You'll see your teammate's cursor moving in real time with their name tag on it.",
+      title: "Live cursors",
+      desc: "Every collaborator gets a named, color-coded cursor. Watch exactly where teammates are and what they're typing — the moment it happens.",
     },
     {
       Icon: Ico.Play,
       color: "#10B981",
       title: "Run code together",
-      desc: "Hit Run and the output appears for everyone in the room. Supports JS, Python, Java, C++, Go, Rust, C#, PHP, Ruby and more.",
+      desc: "Execute in a Docker-sandboxed environment. Output is shared with everyone in the room simultaneously. Supports JS, Python, Java, C++ and more.",
     },
     {
       Icon: Ico.Msg,
       color: "#F472B6",
-      title: "Chat without switching tabs",
-      desc: "A built-in chat panel sits next to your editor. No Slack, no Discord, no context switching.",
+      title: "Chat built in, not bolted on",
+      desc: "A floating chat panel lives inside the editor. Send a message, flag a bug, or share a snippet — without leaving the window.",
     },
     {
       Icon: Ico.Folder,
       color: "#3B82F6",
-      title: "Multiple files, one room",
-      desc: "Add as many files as you need. Everyone switches between them together. Great for small projects and interviews.",
+      title: "Full file tree",
+      desc: "Create and switch between files just like a VS Code workspace. Every file syncs independently in real time for every user in the room.",
     },
     {
       Icon: Ico.Bolt,
       color: "#F59E0B",
-      title: "Under 50ms sync",
-      desc: "Edits travel over a persistent WebSocket connection — no polling, no page refreshes, no visible lag.",
+      title: "Sub-50ms sync",
+      desc: "Edits travel over a persistent WebSocket connection. No polling, no page refresh. Changes appear before you finish the keystroke.",
     },
     {
       Icon: Ico.Globe,
       color: "#34D399",
-      title: "Open it, share it, done",
-      desc: "No account. No install. Just open the link, create a room, and send a 6-character code to anyone.",
+      title: "Zero friction entry",
+      desc: "No account. No install. Six characters to share, one second to join. Works in any modern browser on any device.",
     },
   ];
   return (
     <div
       id="features"
       style={{
-        background: "#111115",
-        borderTop: "1px solid rgba(255,255,255,0.05)",
-        borderBottom: "1px solid rgba(255,255,255,0.05)",
+        background: "#0E0E13",
+        borderTop: "1px solid rgba(255,255,255,0.04)",
+        borderBottom: "1px solid rgba(255,255,255,0.04)",
       }}
     >
       <div
@@ -917,56 +1363,69 @@ function Features() {
               marginBottom: "14px",
             }}
           >
-            What you get
+            Features
           </p>
           <h2
             style={{
-              fontSize: "clamp(28px, 4vw, 44px)",
+              fontSize: "clamp(28px,4vw,44px)",
               fontWeight: 800,
               letterSpacing: "-1.5px",
               color: "#F8FAFC",
               marginBottom: "14px",
             }}
           >
-            Everything you need to code together
+            All the tools. None of the setup.
           </h2>
           <p
             style={{
               color: "#6B7280",
               fontSize: "16px",
               lineHeight: 1.7,
-              maxWidth: "500px",
+              maxWidth: "460px",
               margin: "0 auto",
             }}
           >
-            No fluff. No pairing extensions. Just open a room and start writing.
+            Built for speed. Every feature serves one goal: less friction
+            between you and writing code together.
           </p>
         </div>
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-            gap: "16px",
+            gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))",
+            gap: "14px",
           }}
         >
           {list.map((item) => (
             <div
               key={item.title}
-              className="ce-card"
+              className="feat-card"
               style={{
                 background: "#09090B",
-                border: "1px solid rgba(255,255,255,0.07)",
+                border: "1px solid rgba(255,255,255,0.06)",
                 borderRadius: "14px",
-                padding: "26px",
+                padding: "24px 24px 26px",
+                position: "relative",
+                overflow: "hidden",
               }}
             >
+              <div
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: "1px",
+                  background: `linear-gradient(90deg, transparent, ${item.color}40, transparent)`,
+                }}
+              />
               <div
                 style={{
                   width: 42,
                   height: 42,
                   borderRadius: "10px",
-                  background: `${item.color}15`,
-                  border: `1px solid ${item.color}30`,
+                  background: `${item.color}14`,
+                  border: `1px solid ${item.color}28`,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -998,134 +1457,39 @@ function Features() {
   );
 }
 
-// ─── HOW IT WORKS
+//  HOW IT WORKS  bg #09090B — 3 animated step cards
 function HowItWorks() {
   const steps = [
     {
-      n: "1",
+      n: "01",
+      color: "#6366F1",
       title: "Create a room",
-      desc: 'Click "Create a room". You get a unique 6-character code — like K9MX2A. That is your room.',
-      detail: (
-        <div
-          style={{
-            marginTop: "16px",
-            padding: "14px 16px",
-            background: "#09090B",
-            borderRadius: "9px",
-            border: "1px solid rgba(255,255,255,0.06)",
-            fontFamily: '"JetBrains Mono","Fira Code",monospace',
-            fontSize: "13px",
-          }}
-        >
-          <span style={{ color: "#10B981" }}>Room </span>
-          <span
-            style={{ color: "#FCD34D", fontWeight: 700, letterSpacing: "2px" }}
-          >
-            K9MX2A
-          </span>
-          <span style={{ color: "#6B7280" }}> — ready</span>
-        </div>
-      ),
+      desc: 'Click "Create a room". A 6-character code is generated on the spot. No sign-up, no configuration — just a code.',
+      Visual: RoomCodeVisual,
     },
     {
-      n: "2",
+      n: "02",
+      color: "#F472B6",
       title: "Share the code",
-      desc: "Send that 6-character code to your teammate. They type it in and they're instantly in your editor.",
-      detail: (
-        <div
-          style={{
-            marginTop: "16px",
-            display: "flex",
-            gap: "8px",
-            flexWrap: "wrap",
-          }}
-        >
-          {[
-            { name: "Alex", c: "#34D399" },
-            { name: "Maya", c: "#F472B6" },
-            { name: "Ravi", c: "#60A5FA" },
-          ].map((u) => (
-            <div
-              key={u.name}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "6px",
-                padding: "5px 11px",
-                borderRadius: "8px",
-                background: "#09090B",
-                border: "1px solid rgba(255,255,255,0.07)",
-              }}
-            >
-              <div
-                style={{
-                  width: 7,
-                  height: 7,
-                  borderRadius: "50%",
-                  background: u.c,
-                }}
-              />
-              <span style={{ color: "#94A3B8", fontSize: "12px" }}>
-                {u.name} joined
-              </span>
-            </div>
-          ))}
-        </div>
-      ),
+      desc: "Send the code to anyone. They enter it on the same page and land directly in your editor with their own named cursor.",
+      Visual: ShareVisual,
     },
     {
-      n: "3",
+      n: "03",
+      color: "#34D399",
       title: "Code together, live",
-      desc: "You're both in the same editor. Type anywhere, run code, chat — everything syncs the moment it happens.",
-      detail: (
-        <div
-          style={{
-            marginTop: "16px",
-            display: "flex",
-            gap: "8px",
-            flexWrap: "wrap",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              padding: "5px 11px",
-              borderRadius: "8px",
-              background: "rgba(16,185,129,0.1)",
-              border: "1px solid rgba(16,185,129,0.2)",
-              color: "#10B981",
-              fontSize: "12px",
-            }}
-          >
-            <Ico.Check s={12} c="#10B981" /> Output: "Hello, world!"
-          </div>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              padding: "5px 11px",
-              borderRadius: "8px",
-              background: "rgba(99,102,241,0.1)",
-              border: "1px solid rgba(99,102,241,0.2)",
-              color: "#818CF8",
-              fontSize: "12px",
-            }}
-          >
-            <Ico.Msg s={12} c="#818CF8" /> Maya: "Ship it!"
-          </div>
-        </div>
-      ),
+      desc: "Both of you are in the same editor. Every keystroke syncs instantly. Run code, chat, and switch files — all in real time.",
+      Visual: LiveCodeVisual,
     },
   ];
+
   return (
-    <div id="how">
+    <div id="how" style={{ background: "#09090B" }}>
       <div
         style={{ maxWidth: "1160px", margin: "0 auto", padding: "96px 32px" }}
       >
-        <div style={{ textAlign: "center", marginBottom: "60px" }}>
+        {/* Header */}
+        <div style={{ textAlign: "center", marginBottom: "64px" }}>
           <p
             style={{
               color: "#6366F1",
@@ -1140,68 +1504,177 @@ function HowItWorks() {
           </p>
           <h2
             style={{
-              fontSize: "clamp(28px, 4vw, 44px)",
+              fontSize: "clamp(28px,4vw,44px)",
               fontWeight: 800,
               letterSpacing: "-1.5px",
               color: "#F8FAFC",
+              marginBottom: "14px",
             }}
           >
-            Three steps. Thirty seconds.
+            Open a room in 15 seconds.
           </h2>
+          <p
+            style={{
+              color: "#6B7280",
+              fontSize: "16px",
+              maxWidth: "360px",
+              margin: "0 auto",
+            }}
+          >
+            Three steps. No account required.
+          </p>
         </div>
+
+        {/* Step cards grid */}
         <div
+          className="steps-grid"
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+            gridTemplateColumns: "repeat(3,1fr)",
             gap: "16px",
           }}
         >
-          {steps.map((s) => (
+          {steps.map((step, i) => (
             <div
-              key={s.n}
-              className="ce-step-card"
+              key={i}
+              className="step-card"
               style={{
-                background: "#0F0F11",
+                background: "#0C0C12",
                 border: "1px solid rgba(255,255,255,0.07)",
-                borderRadius: "14px",
-                padding: "28px",
+                borderRadius: "16px",
+                overflow: "hidden",
+                position: "relative",
+                display: "flex",
+                flexDirection: "column",
               }}
             >
+              {/* Top accent line */}
               <div
                 style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: "9px",
-                  background: "rgba(99,102,241,0.12)",
-                  border: "1px solid rgba(99,102,241,0.25)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "#818CF8",
-                  fontWeight: 800,
-                  fontSize: "15px",
-                  marginBottom: "16px",
-                  fontFamily: '"JetBrains Mono","Fira Code",monospace',
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: "1px",
+                  background: `linear-gradient(90deg, transparent 0%, ${step.color}70 50%, transparent 100%)`,
                 }}
-              >
-                {s.n}
-              </div>
-              <h3
+              />
+
+              {/* Visual area */}
+              <div
                 style={{
-                  fontSize: "17px",
-                  fontWeight: 700,
-                  color: "#F8FAFC",
-                  marginBottom: "10px",
+                  height: "210px",
+                  background: "#08080E",
+                  borderBottom: "1px solid rgba(255,255,255,0.05)",
+                  position: "relative",
+                  overflow: "hidden",
+                  flexShrink: 0,
                 }}
               >
-                {s.title}
-              </h3>
-              <p
-                style={{ fontSize: "14px", lineHeight: 1.65, color: "#6B7280" }}
+                {/* Watermark step number */}
+                <div
+                  style={{
+                    position: "absolute",
+                    right: "10px",
+                    top: "4px",
+                    fontSize: "88px",
+                    fontWeight: 900,
+                    color: "rgba(255,255,255,0.025)",
+                    fontFamily: "Inter,sans-serif",
+                    lineHeight: 1,
+                    userSelect: "none",
+                    pointerEvents: "none",
+                  }}
+                >
+                  {step.n}
+                </div>
+                <step.Visual />
+              </div>
+
+              {/* Text area */}
+              <div
+                style={{
+                  padding: "22px 24px 26px",
+                  flex: 1,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "10px",
+                }}
               >
-                {s.desc}
-              </p>
-              {s.detail}
+                {/* Step badge */}
+                <div
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    padding: "3px 10px",
+                    borderRadius: "20px",
+                    background: `${step.color}12`,
+                    border: `1px solid ${step.color}28`,
+                    width: "fit-content",
+                  }}
+                >
+                  <span
+                    style={{
+                      color: step.color,
+                      fontSize: "11px",
+                      fontWeight: 700,
+                      fontFamily: "monospace",
+                    }}
+                  >
+                    Step {step.n}
+                  </span>
+                </div>
+                <h3
+                  style={{
+                    fontSize: "20px",
+                    fontWeight: 700,
+                    color: "#F8FAFC",
+                    letterSpacing: "-0.4px",
+                    lineHeight: 1.2,
+                  }}
+                >
+                  {step.title}
+                </h3>
+                <p
+                  style={{
+                    fontSize: "14px",
+                    lineHeight: 1.72,
+                    color: "#6B7280",
+                  }}
+                >
+                  {step.desc}
+                </p>
+              </div>
+
+              {/* Bottom connector arrow (not on last card) */}
+              {i < steps.length - 1 && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "105px",
+                    right: "-20px",
+                    width: "40px",
+                    height: "1px",
+                    background: `rgba(255,255,255,0.08)`,
+                    zIndex: 2,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "flex-end",
+                  }}
+                  className="hide-mobile"
+                >
+                  <div
+                    style={{
+                      width: 0,
+                      height: 0,
+                      borderTop: "4px solid transparent",
+                      borderBottom: "4px solid transparent",
+                      borderLeft: `6px solid rgba(255,255,255,0.15)`,
+                    }}
+                  />
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -1210,42 +1683,42 @@ function HowItWorks() {
   );
 }
 
-// ─── FAQ
+// FAQ  bg #0E0E13
 function FAQ() {
   const [open, setOpen] = useState(null);
   const items = [
     {
-      q: "Is it actually free?",
-      a: "Yes, completely. No paid plan, no trial, no credit card. The project is open source under the MIT license.",
+      q: "Is it free?",
+      a: "Yes, completely. No paid plan, no trial, no credit card required. The project is open source under the MIT license.",
     },
     {
       q: "Do I need an account?",
-      a: "No. Open the site, create a room, share the code. We do not store any user data.",
+      a: "No. Open the site, create a room, share the code. No sign-up, and we store no user data.",
     },
     {
-      q: "What languages can I run?",
-      a: "Code execution is supported for JavaScript, Python, Java, C, and C++. The editor supports syntax highlighting for 13 languages — including TypeScript, Go, Rust, C#, F#, PHP, Ruby, Haskell, and plain text.",
+      q: "Which languages are supported?",
+      a: "Code execution is available for JavaScript, Python, Java, C, and C++. Syntax highlighting covers 12 languages including TypeScript, Go, Rust, C#, F#, PHP, Ruby, and Haskell.",
     },
     {
       q: "What happens to my code when everyone leaves?",
-      a: "The session is cleared from memory. Rooms are not persisted to a database. Use the Export button to download your files as a ZIP before closing.",
+      a: "The session is cleared from memory. Rooms are not persisted to a database. Use the Export button to download all files as a ZIP before closing.",
     },
     {
       q: "How many people can join a room?",
-      a: "There is no enforced limit. In practice 2–6 people works best for focused collaboration.",
+      a: "There is no enforced limit. In practice, 2–6 people works best for focused collaboration.",
     },
     {
-      q: "Can I self-host this?",
-      a: "Yes. The source is on GitHub. The frontend is React + Vite, the backend is Node.js + Express + Socket.io. Straightforward to deploy on any server.",
+      q: "Can I self-host it?",
+      a: "Yes. The source is on GitHub. Frontend is React + Vite, backend is Node.js + Express + WebSocket. Straightforward to deploy on any server.",
     },
   ];
   return (
     <div
       id="faq"
       style={{
-        background: "#111115",
-        borderTop: "1px solid rgba(255,255,255,0.05)",
-        borderBottom: "1px solid rgba(255,255,255,0.05)",
+        background: "#0E0E13",
+        borderTop: "1px solid rgba(255,255,255,0.04)",
+        borderBottom: "1px solid rgba(255,255,255,0.04)",
       }}
     >
       <div
@@ -1266,13 +1739,13 @@ function FAQ() {
           </p>
           <h2
             style={{
-              fontSize: "clamp(28px, 4vw, 42px)",
+              fontSize: "clamp(28px,4vw,42px)",
               fontWeight: 800,
               letterSpacing: "-1.5px",
               color: "#F8FAFC",
             }}
           >
-            Common questions
+            Questions & answers
           </h2>
         </div>
         {items.map((item, i) => (
@@ -1298,6 +1771,7 @@ function FAQ() {
                 justifyContent: "space-between",
                 alignItems: "center",
                 gap: "16px",
+                transition: "color 0.15s",
               }}
             >
               <span>{item.q}</span>
@@ -1333,7 +1807,7 @@ function FAQ() {
   );
 }
 
-// ─── NETWORK VISUALIZATION
+//  NETWORK VIZ (unchanged, used in CTA)
 const ALL_NAMES = [
   "Alex",
   "Maya",
@@ -1348,7 +1822,6 @@ const ALL_NAMES = [
   "Zara",
   "Jin",
 ];
-
 function makePeer(name, i, total) {
   const angle = (i / total) * Math.PI * 2 + Math.random() * 0.4;
   return {
@@ -1362,20 +1835,17 @@ function makePeer(name, i, total) {
     y: 0,
   };
 }
-
 function NetworkViz() {
   const canvasRef = useRef(null);
   const wrapRef = useRef(null);
   const tooltipRef = useRef(null);
   const stateRef = useRef(null);
-
   useEffect(() => {
     const canvas = canvasRef.current;
     const wrap = wrapRef.current;
     const tooltip = tooltipRef.current;
     if (!canvas || !wrap) return;
     const ctx = canvas.getContext("2d");
-
     function resize() {
       const rect = wrap.getBoundingClientRect();
       canvas.width = rect.width * window.devicePixelRatio;
@@ -1393,11 +1863,9 @@ function NetworkViz() {
       return { w: rect.width, h: rect.height };
     }
     let { w, h } = resize();
-
     function buildRooms() {
       return [
         {
-          // Room 1 — 2 people
           fx: 0.25,
           fy: 0.38,
           x: w * 0.25,
@@ -1406,7 +1874,6 @@ function NetworkViz() {
           peers: [makePeer("Alex", 0, 2), makePeer("Maya", 1, 2)],
         },
         {
-          // Room 2 — 3 people
           fx: 0.73,
           fy: 0.32,
           x: w * 0.73,
@@ -1419,7 +1886,6 @@ function NetworkViz() {
           ],
         },
         {
-          // Room 3 — 5 people
           fx: 0.48,
           fy: 0.75,
           x: w * 0.48,
@@ -1435,11 +1901,9 @@ function NetworkViz() {
         },
       ];
     }
-
     const rooms = buildRooms();
     const packets = [];
     const pulses = [];
-
     function spawnPacket() {
       const room = rooms[Math.floor(Math.random() * rooms.length)];
       const stable = room.peers.filter(
@@ -1458,23 +1922,21 @@ function NetworkViz() {
     const spawnTimer = setInterval(() => {
       if (Math.random() < 0.75) spawnPacket();
     }, 680);
-
     function spawnPulse() {
       const room = rooms[Math.floor(Math.random() * rooms.length)];
       pulses.push({ x: room.x, y: room.y, r: room.r + 4, op: 0.5 });
     }
     const pulseTimer = setInterval(spawnPulse, 2400);
     rooms.forEach((r) => pulses.push({ x: r.x, y: r.y, r: r.r + 4, op: 0.5 }));
-
     function triggerJoinLeave() {
       const room = rooms[Math.floor(Math.random() * rooms.length)];
       const stable = room.peers.filter((p) => p.state === "stable");
       if (!stable.length) return;
       const leaving = stable[Math.floor(Math.random() * stable.length)];
       leaving.state = "leaving";
-      const checkGone = setInterval(() => {
+      const chk = setInterval(() => {
         if (leaving.alpha <= 0.04) {
-          clearInterval(checkGone);
+          clearInterval(chk);
           leaving.name =
             ALL_NAMES[Math.floor(Math.random() * ALL_NAMES.length)];
           leaving.angle = Math.random() * Math.PI * 2;
@@ -1488,9 +1950,8 @@ function NetworkViz() {
       triggerJoinLeave,
       3200 + Math.random() * 1400,
     );
-
     const highlight = { peer: null, until: 0 };
-    function triggerHighlight() {
+    function triggerHL() {
       const room = rooms[Math.floor(Math.random() * rooms.length)];
       const stable = room.peers.filter(
         (p) => p.state === "stable" && p.alpha > 0.7,
@@ -1499,11 +1960,9 @@ function NetworkViz() {
       highlight.peer = stable[Math.floor(Math.random() * stable.length)];
       highlight.until = performance.now() + 1500;
     }
-    const hlTimer = setInterval(triggerHighlight, 2600 + Math.random() * 800);
-    setTimeout(triggerHighlight, 900);
-
+    const hlTimer = setInterval(triggerHL, 2600 + Math.random() * 800);
+    setTimeout(triggerHL, 900);
     stateRef.current = { rooms, packets, pulses, raf: null };
-
     function onResize() {
       const r = resize();
       w = r.w;
@@ -1515,11 +1974,9 @@ function NetworkViz() {
       stateRef.current.pulses.length = 0;
     }
     window.addEventListener("resize", onResize);
-
     function step() {
       const { rooms: rs, packets: pk, pulses: ps } = stateRef.current;
       ctx.clearRect(0, 0, w, h);
-
       for (const room of rs) {
         for (const peer of room.peers) {
           peer.angle += peer.vAngle;
@@ -1533,7 +1990,6 @@ function NetworkViz() {
           }
         }
       }
-
       for (let p = ps.length - 1; p >= 0; p--) {
         const pl = ps[p];
         pl.r += 0.85;
@@ -1548,7 +2004,6 @@ function NetworkViz() {
         ctx.lineWidth = 1.2;
         ctx.stroke();
       }
-
       for (const room of rs) {
         for (const peer of room.peers) {
           if (peer.alpha < 0.05) continue;
@@ -1560,7 +2015,6 @@ function NetworkViz() {
           ctx.stroke();
         }
       }
-
       for (let p = pk.length - 1; p >= 0; p--) {
         const pkt = pk[p];
         pkt.t += pkt.speed;
@@ -1568,12 +2022,12 @@ function NetworkViz() {
           pk.splice(p, 1);
           continue;
         }
-        const fromX = pkt.toRoom ? pkt.peer.x : pkt.room.x;
-        const fromY = pkt.toRoom ? pkt.peer.y : pkt.room.y;
-        const toX = pkt.toRoom ? pkt.room.x : pkt.peer.x;
-        const toY = pkt.toRoom ? pkt.room.y : pkt.peer.y;
-        const px = fromX + (toX - fromX) * pkt.t;
-        const py = fromY + (toY - fromY) * pkt.t;
+        const fx = pkt.toRoom ? pkt.peer.x : pkt.room.x;
+        const fy = pkt.toRoom ? pkt.peer.y : pkt.room.y;
+        const tx = pkt.toRoom ? pkt.room.x : pkt.peer.x;
+        const ty = pkt.toRoom ? pkt.room.y : pkt.peer.y;
+        const px = fx + (tx - fx) * pkt.t;
+        const py = fy + (ty - fy) * pkt.t;
         ctx.beginPath();
         ctx.arc(px, py, 2.1, 0, Math.PI * 2);
         ctx.fillStyle = "rgba(129,140,248,0.92)";
@@ -1582,7 +2036,6 @@ function NetworkViz() {
         ctx.fill();
         ctx.shadowBlur = 0;
       }
-
       for (const room of rs) {
         ctx.beginPath();
         ctx.arc(room.x, room.y, room.r + 6, 0, Math.PI * 2);
@@ -1600,7 +2053,6 @@ function NetworkViz() {
         ctx.closePath();
         ctx.fill();
         ctx.fillRect(room.x - 2.6, room.y - 0.5, 5.2, 4.2);
-
         for (const peer of room.peers) {
           if (peer.alpha < 0.04) continue;
           if (peer === highlight.peer && performance.now() < highlight.until) {
@@ -1615,7 +2067,6 @@ function NetworkViz() {
           ctx.fill();
         }
       }
-
       if (tooltip) {
         const p = highlight.peer;
         if (p && p.alpha > 0.6 && performance.now() < highlight.until) {
@@ -1627,11 +2078,9 @@ function NetworkViz() {
           tooltip.style.opacity = "0";
         }
       }
-
       stateRef.current.raf = requestAnimationFrame(step);
     }
     step();
-
     return () => {
       cancelAnimationFrame(stateRef.current?.raf);
       clearInterval(spawnTimer);
@@ -1641,7 +2090,6 @@ function NetworkViz() {
       window.removeEventListener("resize", onResize);
     };
   }, []);
-
   return (
     <div
       ref={wrapRef}
@@ -1650,7 +2098,6 @@ function NetworkViz() {
         width: "100%",
         height: "100%",
         minHeight: "220px",
-        cursor: "default",
       }}
     >
       <canvas
@@ -1661,7 +2108,7 @@ function NetworkViz() {
         ref={tooltipRef}
         style={{
           position: "absolute",
-          transform: "translate(-50%, -100%)",
+          transform: "translate(-50%,-100%)",
           padding: "4px 10px",
           borderRadius: "6px",
           background: "#18181B",
@@ -1681,7 +2128,7 @@ function NetworkViz() {
   );
 }
 
-// ─── CTA
+//  CTA
 function CTA({ onOpen }) {
   return (
     <div style={{ padding: "96px 32px" }}>
@@ -1697,10 +2144,9 @@ function CTA({ onOpen }) {
           alignItems: "stretch",
           flexWrap: "wrap",
           boxShadow:
-            "0 24px 60px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04)",
+            "0 24px 60px rgba(0,0,0,0.4),inset 0 1px 0 rgba(255,255,255,0.04)",
         }}
       >
-        {/* LEFT — glass viz panel */}
         <div
           style={{
             flex: "0 0 auto",
@@ -1710,13 +2156,12 @@ function CTA({ onOpen }) {
             display: "flex",
             flexDirection: "column",
             background:
-              "linear-gradient(145deg, rgba(99,102,241,0.1) 0%, rgba(9,9,11,0.6) 50%, rgba(99,102,241,0.06) 100%)",
+              "linear-gradient(145deg,rgba(99,102,241,0.1) 0%,rgba(9,9,11,0.6) 50%,rgba(99,102,241,0.06) 100%)",
             backdropFilter: "blur(12px)",
             WebkitBackdropFilter: "blur(12px)",
             borderRight: "1px solid rgba(99,102,241,0.14)",
           }}
         >
-          {/* Top edge glass highlight */}
           <div
             style={{
               position: "absolute",
@@ -1725,14 +2170,13 @@ function CTA({ onOpen }) {
               right: "10%",
               height: "1px",
               background:
-                "linear-gradient(90deg, transparent, rgba(99,102,241,0.35), transparent)",
+                "linear-gradient(90deg,transparent,rgba(99,102,241,0.35),transparent)",
               zIndex: 1,
             }}
           />
           <div style={{ flex: 1, minHeight: 0 }}>
             <NetworkViz />
           </div>
-          {/* Legend */}
           <div
             style={{
               display: "flex",
@@ -1783,8 +2227,6 @@ function CTA({ onOpen }) {
             </span>
           </div>
         </div>
-
-        {/* RIGHT — copy + buttons */}
         <div
           style={{
             flex: 1,
@@ -1798,7 +2240,7 @@ function CTA({ onOpen }) {
         >
           <h2
             style={{
-              fontSize: "clamp(26px, 4vw, 38px)",
+              fontSize: "clamp(26px,4vw,38px)",
               fontWeight: 900,
               letterSpacing: "-1.5px",
               lineHeight: 1.1,
@@ -1808,7 +2250,9 @@ function CTA({ onOpen }) {
           >
             Open a room.
             <br />
-            <span style={{ color: "#52525B" }}>Start coding together.</span>
+            <span style={{ color: "#52525B" }}>
+              Your team is one code away.
+            </span>
           </h2>
           <p
             style={{
@@ -1822,14 +2266,7 @@ function CTA({ onOpen }) {
             No account. No setup. Share a 6-character code and your team shows
             up — live, like this.
           </p>
-          <div
-            style={{
-              display: "flex",
-              gap: "12px",
-              flexWrap: "wrap",
-              marginBottom: "24px",
-            }}
-          >
+          <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
             <button
               className="ce-btn-primary"
               onClick={onOpen}
@@ -1878,7 +2315,7 @@ function CTA({ onOpen }) {
   );
 }
 
-// ─── FOOTER
+//FOOTER
 function Footer({ onOpen }) {
   return (
     <footer
@@ -1891,45 +2328,18 @@ function Footer({ onOpen }) {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+            gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))",
             gap: "36px",
             marginBottom: "36px",
           }}
         >
           <div>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "7px",
-                marginBottom: "10px",
-              }}
-            >
-              {/* <div
-                style={{
-                  width: 24,
-                  height: 24,
-                  borderRadius: "6px",
-                  background: "#6366F1",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Ico.Bolt s={12} c="#fff" />
-              </div> */}
-              {/* <span
-                style={{ fontWeight: 700, fontSize: "14px", color: "#F8FAFC" }}
-              >
-                Collab Editor
-              </span> */}
-              <div style={{ display: "flex", alignItems: "center" }}>
+            <div style={{ marginBottom: "12px" }}>
               <img
-                src="/syncra-icon-transparent.svg"
+                src="/syncra-logo-dark.svg"
                 alt="Syncra"
-                style={{ height: "32px" }}
+                style={{ height: "28px" }}
               />
-            </div>
             </div>
             <p
               style={{
@@ -2110,10 +2520,10 @@ function Footer({ onOpen }) {
           }}
         >
           <span style={{ color: "#3F3F46", fontSize: "12px" }}>
-            © 2025 Collab Editor · Free forever · No data stored · MIT License
+            © 2025 Syncra · Free forever · No data stored · MIT License
           </span>
           <span style={{ color: "#3F3F46", fontSize: "12px" }}>
-            React + Socket.io + Monaco Editor
+            React + WebSocket + Monaco Editor
           </span>
         </div>
       </div>
@@ -2121,7 +2531,7 @@ function Footer({ onOpen }) {
   );
 }
 
-// ─── ROOT
+//  ROOT
 export default function Landing() {
   const navigate = useNavigate();
   useEffect(() => {
