@@ -10,7 +10,7 @@ const LANG_ICONS = {
   csharp:     '/lang_icons/c-sharp.png',
   fsharp:     '/lang_icons/FSharp.png',
   php:        '/lang_icons/php.png',
-  ruby:       '/lang_icons/ruby.png',
+  ruby:       '/lang_icons/Ruby.png',
   haskell:    '/lang_icons/haskell.png',
   go:         '/lang_icons/go.png',
   rust:       '/lang_icons/rust.png',
