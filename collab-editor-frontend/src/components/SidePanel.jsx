@@ -11,7 +11,7 @@ const LANG_ICONS = {
   fsharp:     '/lang_icons/FSharp.png',
   php:        '/lang_icons/php.png',
   ruby:       '/lang_icons/Ruby.png',
-  haskell:    '/lang_icons/haskell.png',
+  haskell:    '/lang_icons/Haskell.png',
   go:         '/lang_icons/go.png',
   rust:       '/lang_icons/rust.png',
   plaintext:  '/lang_icons/text.png',
