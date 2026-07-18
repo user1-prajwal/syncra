@@ -12,7 +12,7 @@ const LANG_ICONS = {
   php:        '/lang_icons/php.png',
   ruby:       '/lang_icons/Ruby.png',
   haskell:    '/lang_icons/Haskell.png',
-  go:         '/lang_icons/go.png',
+  go:         '/lang_icons/golang.png',
   rust:       '/lang_icons/rust.png',
   plaintext:  '/lang_icons/text.png',
 }
