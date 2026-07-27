@@ -48,7 +48,7 @@ function useIsMobile() {
   return mob;
 }
 
-// ─── Desktop Tab Bar 
+// ─── Desktop Tab Bar ─────────────────────────────────────────────────────────
 function TabBar({ files, activeFileId, setActiveFileId, onClose }) {
   return (
     <div style={{ display:"flex", alignItems:"flex-end", background:"#252526", overflowX:"auto", overflowY:"hidden", borderBottom:"1px solid #1a1a1a", flexShrink:0, height:36, scrollbarWidth:"none" }}>
@@ -77,7 +77,7 @@ function TabBar({ files, activeFileId, setActiveFileId, onClose }) {
   );
 }
 
-// ─── Desktop Status Bar 
+// ─── Desktop Status Bar ───────────────────────────────────────────────────────
 function StatusBar({ connected, users, activeFile, cursorPos, roomId }) {
   return (
     <div style={{ display:"flex", alignItems:"center", height:22, background:"#007acc", flexShrink:0, fontSize:11, color:"rgba(255,255,255,.85)" }}>
@@ -95,7 +95,7 @@ function StatusBar({ connected, users, activeFile, cursorPos, roomId }) {
   );
 }
 
-// ─── Desktop Output Panel 
+// ─── Desktop Output Panel ─────────────────────────────────────────────────────
 function DesktopOutputPanel({ output, onClear, isRunning }) {
   const isError = output.startsWith("❌");
   return (
@@ -120,7 +120,7 @@ function DesktopOutputPanel({ output, onClear, isRunning }) {
   );
 }
 
-// ─── Mobile: full-screen bottom sheet overlay 
+// ─── Mobile: full-screen bottom sheet overlay ─────────────────────────────────
 // Used for Files, Output, Chat on mobile.
 // title, onClose, children
 function MobileSheet({ title, onClose, children, height="85vh" }) {
@@ -149,7 +149,7 @@ function MobileSheet({ title, onClose, children, height="85vh" }) {
   );
 }
 
-// ─── Mobile Output Sheet content 
+// ─── Mobile Output Sheet content ──────────────────────────────────────────────
 function MobileOutputContent({ output, onClear, isRunning }) {
   const isError = output.startsWith("❌");
   return (
@@ -167,7 +167,7 @@ function MobileOutputContent({ output, onClear, isRunning }) {
   );
 }
 
-// ─── Mobile Bottom Tab Bar 
+// ─── Mobile Bottom Tab Bar ────────────────────────────────────────────────────
 // 5 tabs: Files | Chat | RUN (center, prominent) | Output | Users
 function MobileTabBar({ onFiles, onChat, onRun, onOutput, onUsers, isRunning, chatBadge, hasOutput }) {
   return (
@@ -212,7 +212,7 @@ function MobileTabBar({ onFiles, onChat, onRun, onOutput, onUsers, isRunning, ch
   );
 }
 
-// ─── Mobile Users Sheet content ─
+// ─── Mobile Users Sheet content ───────────────────────────────────────────────
 function MobileUsersContent({ username, userList, SESSION_COLOR }) {
   const all = [{ name:username, color:SESSION_COLOR, isYou:true }, ...userList.filter(u=>u.name!==username)];
   return (
@@ -233,7 +233,7 @@ function MobileUsersContent({ username, userList, SESSION_COLOR }) {
   );
 }
 
-// ─── Join modal 
+// ─── Join modal ───────────────────────────────────────────────────────────────
 function JoinModal({ roomId, username, setUsername, onJoin }) {
   return (
     <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.8)", backdropFilter:"blur(10px)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:9999, padding:20 }}>
@@ -270,7 +270,7 @@ function JoinModal({ roomId, username, setUsername, onJoin }) {
   );
 }
 
-// ─── EditorPage 
+// ─── EditorPage ───────────────────────────────────────────────────────────────
 function EditorPage() {
   const { roomId } = useParams();
   const isMobile   = useIsMobile();
@@ -314,7 +314,7 @@ function EditorPage() {
   const activeFile  = files.find(f => f.id === activeFileId) || files[0];
   const onlineUsers = [{ name:username, color:SESSION_COLOR }, ...userList.filter(u => u.name !== username)];
 
-  // ── WebSocket ─────
+  // ── WebSocket ──────────────────────────────────────────────────────────────
   // Prevent mobile body scroll (the editor should handle all scrolling internally)
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -435,7 +435,7 @@ function EditorPage() {
     if (el) el.scrollTop=el.scrollHeight;
   }, [messages]);
 
-  // ── Handlers ─────
+  // ── Handlers ──────────────────────────────────────────────────────────────
   const handleCodeChange = useCallback((value) => {
     if (isRemoteChange.current) return;
     setFiles(prev=>prev.map(f=>f.id===activeFileId?{...f,code:value}:f));
@@ -557,7 +557,7 @@ function EditorPage() {
     usernameRef.current=username.trim(); setNameEntered(true); sendJoin(username.trim());
   }
 
-  // ── Render ─
+  // ── Render ────────────────────────────────────────────────────────────────
   // Use 100dvh so mobile browsers (with address bar) don't overflow
   // Lock the app height to the INITIAL innerHeight on mount.
   // This prevents the layout from jumping when mobile browser address bar
@@ -576,7 +576,7 @@ function EditorPage() {
       {/* Join modal */}
       {!nameEntered && <JoinModal roomId={roomId} username={username} setUsername={setUsername} onJoin={handleJoin}/>}
 
-      {/* ── Top Navbar  */}
+      {/* ── Top Navbar ──────────────────────────────────────────────────── */}
       <div style={{ display:"flex", alignItems:"center", gap:6, padding:"0 10px", height:40, background:"#252526", borderBottom:"1px solid #1a1a1a", flexShrink:0, overflow:"hidden" }}>
         {/* Logo */}
         <img src="/syncra-icon.svg" alt="" style={{ height:22, flexShrink:0 }} onError={e=>e.target.style.display="none"}/>
@@ -607,7 +607,7 @@ function EditorPage() {
 
         <div style={{ flex:1 }}/>
 
-        {/* ── Desktop-only buttons ───── */}
+        {/* ── Desktop-only buttons ────────────────────────────────────── */}
         {!isMobile && (
           <>
             {[{label:"⬆ Import",fn:importFile},{label:"⬇ Export",fn:exportFiles}].map(({label,fn})=>(
@@ -629,7 +629,7 @@ function EditorPage() {
           </>
         )}
 
-        {/* ── Mobile: import + export in navbar  */}
+        {/* ── Mobile: import + export in navbar ───────────────────────── */}
         {isMobile && (
           <div style={{ display:"flex", gap:5, flexShrink:0 }}>
             <button type="button" onClick={importFile}
@@ -640,7 +640,7 @@ function EditorPage() {
         )}
       </div>
 
-      {/* ── Main content  */}
+      {/* ── Main content ──────────────────────────────────────────────────── */}
       <div style={{ display:"flex", flex:1, overflow:"hidden" }}>
 
         {/* Desktop sidebar */}
@@ -701,7 +701,7 @@ function EditorPage() {
         )}
       </div>
 
-      {/* ── Mobile bottom tab bar ─── */}
+      {/* ── Mobile bottom tab bar ────────────────────────────────────────── */}
       {isMobile && (
         <MobileTabBar
           onFiles={() => setMobSheet("files")}
@@ -715,35 +715,89 @@ function EditorPage() {
         />
       )}
 
-      {/* ── Mobile: Files sheet ───── */}
+      {/* ── Mobile: Files — bottom sheet (75% height) ───────────────────── */}
       {isMobile && mobSheet==="files" && (
-        <MobileSheet title="Files" onClose={()=>setMobSheet(null)} height="80vh">
-          <SidePanel
-            activePanel="files"
-            files={files}
-            activeFileId={activeFileId}
-            setActiveFileId={id=>{setActiveFileId(id);setMobSheet(null);}}
-            showNewFile={showNewFile}
-            setShowNewFile={setShowNewFile}
-            newFileName={newFileName}
-            setNewFileName={setNewFileName}
-            createNewFile={()=>{createNewFile();setMobSheet(null);}}
-            onDeleteFile={handleDeleteFile}
-            username={username}
-            userList={userList}
-            SESSION_COLOR={SESSION_COLOR}
-          />
-        </MobileSheet>
+        <div style={{ position:"fixed", inset:0, zIndex:900, display:"flex", flexDirection:"column", justifyContent:"flex-end" }}>
+          {/* Dim backdrop — tap to close */}
+          <div style={{ position:"absolute", inset:0, background:"rgba(0,0,0,0.55)" }} onClick={() => { setMobSheet(null); setShowNewFile(false); setNewFileName(""); }}/>
+          {/* Sheet */}
+          <div style={{ position:"relative", height:"75%", display:"flex", flexDirection:"column", background:"#1a1a1a", borderRadius:"16px 16px 0 0", border:"1px solid #2a2a2a", borderBottom:"none", overflow:"hidden" }}>
+
+          {/* Header row */}
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"0 16px", height:52, background:"#252526", borderBottom:"1px solid #2a2a2a", flexShrink:0 }}>
+            <span style={{ color:"#ddd", fontSize:15, fontWeight:600 }}>Files</span>
+            <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+              {/* + new file */}
+              <button
+                onClick={() => setShowNewFile(p => !p)}
+                style={{ background:"transparent", border:"1px solid #333", color:"#888", cursor:"pointer", fontSize:20, width:32, height:32, borderRadius:6, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                +
+              </button>
+              {/* close */}
+              <button
+                onClick={() => { setMobSheet(null); setShowNewFile(false); setNewFileName(""); }}
+                style={{ background:"transparent", border:"none", color:"#666", cursor:"pointer", fontSize:28, lineHeight:1, padding:0 }}>
+                ×
+              </button>
+            </div>
+          </div>
+
+          {/* New file input */}
+          {showNewFile && (
+            <div style={{ padding:"10px 16px", borderBottom:"1px solid #222", flexShrink:0 }}>
+              <input
+                autoFocus
+                type="text"
+                placeholder="e.g. main.py, solution.cpp"
+                value={newFileName}
+                onChange={e => setNewFileName(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === "Enter" && newFileName.trim()) { createNewFile(); setMobSheet(null); }
+                  if (e.key === "Escape") { setShowNewFile(false); setNewFileName(""); }
+                }}
+                style={{ width:"100%", padding:"12px 14px", background:"#111", border:"1px solid #4CAF50", borderRadius:8, color:"#fff", fontSize:14, outline:"none", boxSizing:"border-box", fontFamily:"inherit" }}
+              />
+              <p style={{ color:"#444", fontSize:11, marginTop:6 }}>Press Enter to create · Esc to cancel</p>
+            </div>
+          )}
+
+          {/* File list — each row is large enough for a thumb tap */}
+          <div style={{ flex:1, overflowY:"auto", WebkitOverflowScrolling:"touch" }}>
+            {files.map(file => {
+              const active = file.id === activeFileId;
+              const icon   = LANG_ICONS[file.language] || LANG_ICONS.plaintext;
+              return (
+                <div key={file.id}
+                  onClick={() => { setActiveFileId(file.id); setMobSheet(null); }}
+                  style={{ display:"flex", alignItems:"center", gap:14, padding:"16px 16px", borderBottom:"1px solid #1e1e1e", background:active?"#252525":"transparent", borderLeft:active?"3px solid #4CAF50":"3px solid transparent", cursor:"pointer", minHeight:56 }}>
+                  <img src={icon} alt="" style={{ width:20, height:20, objectFit:"contain", flexShrink:0, opacity:active?1:0.7 }} onError={e=>e.currentTarget.style.display="none"}/>
+                  <span style={{ color:active?"#fff":"#bbb", fontSize:14, fontWeight:active?600:400, flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                    {file.name}
+                  </span>
+                  {/* Delete — only if more than one file */}
+                  {files.length > 1 && (
+                    <button
+                      onClick={e => { e.stopPropagation(); handleDeleteFile(file.id); }}
+                      style={{ background:"transparent", border:"none", color:"#3a3a3a", cursor:"pointer", fontSize:20, padding:"4px 8px", flexShrink:0 }}>
+                      🗑
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          </div>
+        </div>
       )}
 
-      {/* ── Mobile: Output sheet ──── */}
+      {/* ── Mobile: Output sheet ─────────────────────────────────────────── */}
       {isMobile && mobSheet==="output" && (
         <MobileSheet title="Output" onClose={()=>setMobSheet(null)} height="70vh">
           <MobileOutputContent output={output} onClear={()=>setOutput("")} isRunning={isRunning}/>
         </MobileSheet>
       )}
 
-      {/* ── Mobile: Users sheet ───── */}
+      {/* ── Mobile: Users sheet ──────────────────────────────────────────── */}
       {isMobile && mobSheet==="users" && (
         <MobileSheet title={`Users online (${onlineUsers.length})`} onClose={()=>setMobSheet(null)} height="60vh">
           <MobileUsersContent username={username} userList={userList} SESSION_COLOR={SESSION_COLOR}/>
@@ -762,11 +816,68 @@ function EditorPage() {
         <ChatPanel messages={messages} newMessage={newMessage} setNewMessage={setNewMessage} sendMessage={sendMessage} username={username} setShowChat={setShowChat}/>
       )}
 
-      {/* Mobile Chat — full sheet */}
+      {/* ── Mobile: Chat — bottom sheet (75% height) ────────────────────── */}
       {showChat && isMobile && (
-        <MobileSheet title="Chat" onClose={()=>setShowChat(false)} height="85vh">
-          <ChatPanel messages={messages} newMessage={newMessage} setNewMessage={setNewMessage} sendMessage={sendMessage} username={username} setShowChat={setShowChat}/>
-        </MobileSheet>
+        <div style={{ position:"fixed", inset:0, zIndex:900, display:"flex", flexDirection:"column", justifyContent:"flex-end" }}>
+          {/* Dim backdrop */}
+          <div style={{ position:"absolute", inset:0, background:"rgba(0,0,0,0.55)" }} onClick={() => setShowChat(false)}/>
+          {/* Sheet */}
+          <div style={{ position:"relative", height:"75%", display:"flex", flexDirection:"column", background:"#1a1a1a", borderRadius:"16px 16px 0 0", border:"1px solid #2a2a2a", borderBottom:"none", overflow:"hidden" }}>
+
+          {/* Drag handle */}
+          <div style={{ display:"flex", justifyContent:"center", padding:"10px 0 0", flexShrink:0, background:"#1e1e1e" }}>
+            <div style={{ width:36, height:4, borderRadius:2, background:"#333" }}/>
+          </div>
+
+          {/* Header */}
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"8px 16px 10px", background:"#1e1e1e", borderBottom:"1px solid #2a2a2a", flexShrink:0 }}>
+            <span style={{ color:"#ddd", fontSize:15, fontWeight:600 }}>Chat</span>
+            <button onClick={() => setShowChat(false)} style={{ background:"transparent", border:"none", color:"#666", cursor:"pointer", fontSize:28, lineHeight:1, padding:0 }}>×</button>
+          </div>
+
+          {/* Messages */}
+          <div id="chat-messages" style={{ flex:1, overflowY:"auto", WebkitOverflowScrolling:"touch", padding:"12px 16px", display:"flex", flexDirection:"column", gap:10 }}>
+            {messages.length === 0 && (
+              <div style={{ color:"#333", fontSize:13, textAlign:"center", marginTop:40 }}>No messages yet. Say hi 👋</div>
+            )}
+            {messages.map((msg, i) => {
+              const isMe = msg.name === username;
+              return (
+                <div key={i} style={{ display:"flex", flexDirection:"column", alignItems:isMe?"flex-end":"flex-start" }}>
+                  {!isMe && <span style={{ fontSize:11, color:"#555", marginBottom:3, paddingLeft:4 }}>{msg.name}</span>}
+                  <div style={{
+                    maxWidth:"80%", padding:"10px 14px", borderRadius:isMe?"14px 14px 4px 14px":"14px 14px 14px 4px",
+                    background:isMe?"#2e4a2e":"#252525",
+                    border:`1px solid ${isMe?"#3a5a3a":"#2a2a2a"}`,
+                    color:"#ddd", fontSize:14, lineHeight:1.5, wordBreak:"break-word",
+                  }}>
+                    {msg.text}
+                  </div>
+                  <span style={{ fontSize:10, color:"#333", marginTop:3, paddingLeft:isMe?0:4, paddingRight:isMe?4:0 }}>{msg.time}</span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Input row */}
+          <div style={{ display:"flex", gap:10, padding:"12px 16px", background:"#1e1e1e", borderTop:"1px solid #2a2a2a", flexShrink:0 }}>
+            <input
+              type="text"
+              placeholder="Type a message..."
+              value={newMessage}
+              onChange={e => setNewMessage(e.target.value)}
+              onKeyDown={e => { if (e.key==="Enter") sendMessage(); }}
+              style={{ flex:1, padding:"11px 14px", background:"#111", border:"1px solid #2a2a2a", borderRadius:10, color:"#ddd", fontSize:14, outline:"none", fontFamily:"inherit" }}
+              onFocus={e => e.target.style.borderColor="#4CAF50"}
+              onBlur={e  => e.target.style.borderColor="#2a2a2a"}
+            />
+            <button onClick={sendMessage}
+              style={{ padding:"11px 18px", background:"#4CAF50", border:"none", borderRadius:10, color:"#fff", fontSize:14, fontWeight:700, cursor:"pointer", flexShrink:0, fontFamily:"inherit" }}>
+              Send
+            </button>
+          </div>
+          </div>
+        </div>
       )}
     </div>
   );
