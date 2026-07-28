@@ -13,7 +13,7 @@ const LANG_ICONS = {
   ruby:       '/lang_icons/Ruby.png',
   haskell:    '/lang_icons/Haskell.png',
   go:         '/lang_icons/golang.png',
-  rust:       '/lang_icons/rust.png',
+  rust:       '/lang_icons/Rust.png',
   plaintext:  '/lang_icons/text.png',
 }
 
