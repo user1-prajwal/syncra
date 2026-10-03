@@ -55,5 +55,8 @@ export const COLORS = [
 
 ]
 export const SESSION_COLOR = COLORS[Math.floor(Math.random() * COLORS.length)]
-export const BACKEND_URL = 'https://collab-editor-backend-p7at.onrender.com'
-// export const BACKEND_URL = 'http://localhost:4000'
+// Random per-tab id sent with `join` so a tab that reconnects can reclaim its own name.
+// The server keeps it private; it is never shown to other users.
+export const CLIENT_ID = globalThis.crypto?.randomUUID?.() ?? (Math.random().toString(36).slice(2) + Date.now().toString(36))
+// Local dev: create .env.local with VITE_BACKEND_URL=http://localhost:4000
+export const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://collab-editor-backend-p7at.onrender.com'

@@ -2,18 +2,30 @@
   "name": "collab-backend",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest --runInBand",
+    "bench": "node bench/latency.js",
+    "dev": "node --env-file=.env server.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "express": "^5.2.1",
+    "express-rate-limit": "^8.7.0",
     "ws": "^8.20.0",
-    "y-websocket": "^3.0.0",
-    "yjs": "^13.6.30"
+    "yjs": "^13.6.33"
+  },
+  "devDependencies": {
+    "jest": "^30.5.2"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": [
+      "**/test/**/*.test.js"
+    ],
+    "testTimeout": 15000
   }
 }

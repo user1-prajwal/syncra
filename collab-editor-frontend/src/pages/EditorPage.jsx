@@ -4,7 +4,8 @@ import Editor from "@monaco-editor/react";
 import ChatPanel from "../components/ChatPanel";
 import ActivityBar from "../components/ActivityBar";
 import SidePanel from "../components/SidePanel";
-import { SESSION_COLOR, BACKEND_URL } from "../constants";
+import { SESSION_COLOR, BACKEND_URL, CLIENT_ID } from "../constants";
+import { YDocRegistry, bindYTextToMonaco } from "../collab/yjsSync";
 
 const CURSOR_IDLE_MS = 3500;
 
@@ -26,17 +27,8 @@ const LANG_TO_EXT = {
   csharp:"cs",fsharp:"fs",php:"php",ruby:"rb",haskell:"hs",go:"go",rust:"rs",plaintext:"txt",
 };
 
-function applyRemoteCodeToModel(model, monaco, newText) {
-  const oldText = model.getValue();
-  if (oldText === newText) return;
-  let start = 0;
-  const minLen = Math.min(oldText.length, newText.length);
-  while (start < minLen && oldText[start] === newText[start]) start++;
-  let oldEnd = oldText.length, newEnd = newText.length;
-  while (oldEnd > start && newEnd > start && oldText[oldEnd-1] === newText[newEnd-1]) { oldEnd--; newEnd--; }
-  const sp = model.getPositionAt(start), ep = model.getPositionAt(oldEnd);
-  model.pushEditOperations([],[{range:new monaco.Range(sp.lineNumber,sp.column,ep.lineNumber,ep.column),text:newText.slice(start,newEnd)}],()=>null);
-}
+// Two people can create a file in the same millisecond; ids must never collide (a collision would give two different histories one id).
+function newFileId() { return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`; }
 
 function useIsMobile() {
   const [mob, setMob] = useState(() => window.innerWidth < 768);
@@ -289,7 +281,7 @@ function EditorPage() {
   const [showChat,      setShowChat]      = useState(false);
   const [activePanel,   setActivePanel]   = useState("files");
   const [cursorPos,     setCursorPos]     = useState(null);
-  const [initReceived,  setInitReceived]  = useState(false);
+  const [initReceived,  setInitReceived]  = useState(0); // bumps on every server snapshot so Monaco remounts with fresh state
 
   // Mobile sheet visibility
   const [mobSheet, setMobSheet] = useState(null); // "files"|"output"|"users"|null
@@ -309,6 +301,9 @@ function EditorPage() {
   const cursorTimeoutsRef = useRef({});
   const sendIdleTimerRef  = useRef(null);
   const filesRef          = useRef(files);
+  const yRef              = useRef(null);   // YDocRegistry: one Yjs document per file
+  const bindingRef        = useRef(null);   // Monaco <-> Y.Text binding of the mounted editor
+  const epochRef          = useRef(null);   // room epoch from the server; a change means the server lost its state
   useEffect(() => { filesRef.current = files; }, [files]);
 
   const activeFile  = files.find(f => f.id === activeFileId) || files[0];
@@ -331,40 +326,81 @@ function EditorPage() {
 
   function sendJoin(name) {
     if (wsRef.current?.readyState === 1)
-      wsRef.current.send(JSON.stringify({ type:"join", name, color:SESSION_COLOR }));
+      wsRef.current.send(JSON.stringify({ type:"join", name, color:SESSION_COLOR, clientId:CLIENT_ID }));
   }
 
   useEffect(() => {
     if (!roomId) return;
-    const ws = new WebSocket(`wss://${BACKEND_URL.replace("https://","")}/${roomId}`);
+    let stopped = false;
+    let attempt = 0;
+    let retryTimer = null;
+
+    const reg = new YDocRegistry({
+      send: (obj) => {
+        const w = wsRef.current;
+        if (w?.readyState !== 1) return false;
+        w.send(JSON.stringify(obj));
+        return true;
+      },
+      onRemoteText: (id, text) => setFiles(prev => prev.map(f => (f.id === id && f.code !== text ? { ...f, code: text } : f))),
+    });
+    yRef.current = reg;
+    epochRef.current = null;
+
+    const connect = () => {
+    const ws = new WebSocket(`${BACKEND_URL.replace(/^http/, "ws")}/${roomId}`);
     wsRef.current = ws;
-    ws.onopen  = () => setConnected(true);
-    ws.onclose = () => setConnected(false);
+    ws.onopen = () => {
+      attempt = 0;
+      setConnected(true);
+      // After a reconnect the server has forgotten this socket's identity: join again.
+      if (usernameRef.current) ws.send(JSON.stringify({ type:"join", name:usernameRef.current, color:SESSION_COLOR, clientId:CLIENT_ID }));
+    };
+    ws.onclose = (ev) => {
+      setConnected(false);
+      // 1008 = rejected by server policy (bad room / origin / rate limit), 1013 = room full: retrying will not help.
+      if (stopped || ev.code === 1008 || ev.code === 1013) return;
+      const delay = Math.min(1000 * 2 ** attempt, 15000) + Math.random() * 500; // exponential backoff + jitter
+      attempt += 1;
+      retryTimer = setTimeout(connect, delay);
+    };
 
     ws.onmessage = async (event) => {
       const text = event.data instanceof Blob ? await event.data.text() : event.data;
-      const data = JSON.parse(text);
+      let data;
+      try { data = JSON.parse(text); } catch { return; }
 
-      if (data.type==="code") {
-        if (data.sentAt) console.log(`Latency: ${Date.now()-data.sentAt}ms`);
-        setFiles(prev=>prev.map(f=>f.id===data.fileId?{...f,code:data.code}:f));
-        if (data.fileId===editorFileIdRef.current&&editorRef.current&&monacoRef.current) {
-          const model=editorRef.current.getModel();
-          if (model&&model.getValue()!==data.code) {
-            isRemoteChange.current=true;
-            applyRemoteCodeToModel(model,monacoRef.current,data.code);
-            isRemoteChange.current=false;
-          }
-        }
+      if (data.type==="yupdate") {
+        reg.applyUpdate(data.fileId, data.update);   // the Monaco binding (observer) applies it to the editor
       }
       if (data.type==="init") {
-        isRemoteChange.current=true;
-        if (data.files) { setFiles(data.files); setActiveFileId(data.files[0].id); setInitReceived(true); }
+        const firstInit = epochRef.current === null;
+        const serverLostState = !firstInit && !!data.epoch && data.epoch !== epochRef.current;
+        epochRef.current = data.epoch ?? "legacy";
+        const localOnly = reg.mergeSnapshot(data.files || []);
+        const prevFiles = filesRef.current;
+        const kept = [];
+        for (const id of localOnly) {
+          if (serverLostState) { reg.reupload.add(id); const f = prevFiles.find(x => x.id === id); if (f) kept.push(f); }
+          else reg.remove(id);   // the server's list is authoritative: the file was deleted while we were away
+        }
+        const merged = [...(data.files || []).map(f => ({ id:f.id, name:f.name, language:f.language, code:reg.text(f.id) })), ...kept.map(f => ({ ...f, code:reg.text(f.id) }))];
+        if (merged.length) {
+          setFiles(merged);
+          if (firstInit) { setActiveFileId(merged[0].id); setInitReceived(n => n + 1); }   // mount Monaco with the room's text
+          else setActiveFileId(prev => (merged.some(f => f.id === prev) ? prev : merged[0].id));
+        }
         if (data.users) setUserList(data.users);
-        isRemoteChange.current=false;
       }
-      if (data.type==="newfile") setFiles(prev=>prev.find(f=>f.id===data.file.id)?prev:[...prev,data.file]);
+      if (data.type==="newfile") {
+        const f = data.file;
+        if (!reg.has(f.id)) {
+          reg.applyState(f.id, f.ystate);
+          setFiles(prev => (prev.find(x => x.id === f.id) ? prev : [...prev, { id:f.id, name:f.name, language:f.language, code:reg.text(f.id) }]));
+        }
+      }
       if (data.type==="deletefile") {
+        reg.remove(data.fileId);
         setFiles(prev=>{const n=prev.filter(f=>f.id!==data.fileId);return n.length>0?n:prev;});
         setActiveFileId(prev=>{
           if (prev!==data.fileId) return prev;
@@ -373,13 +409,24 @@ function EditorPage() {
         });
       }
       if (data.type==="language") {
-        setFiles(prev=>prev.map(f=>f.id===data.fileId?{...f,language:data.language}:f));
+        setFiles(prev=>prev.map(f=>f.id===data.fileId?{...f,language:data.language,...(data.name?{name:data.name}:{})}:f));
         setLanguageAlert(`${data.changedBy} switched to ${data.language}`);
         setTimeout(()=>setLanguageAlert(""),4000);
       }
       if (data.type==="name-taken") { alert(data.message); setNameEntered(false); setUsername(""); return; }
+      if (data.type==="error") {
+        if (data.code==="file-limit") alert("This room has reached its file limit.");
+        else console.warn("Server rejected a message:", data.code);
+        return;
+      }
       if (data.type==="users")    setUsers(data.count);
-      if (data.type==="userlist") setUserList(data.users);
+      if (data.type==="userlist") {
+        setUserList(data.users);
+        // Our join is confirmed: now upload edits made while offline / files the server lost.
+        if (reg.hasPending && data.users.some(u => u.name === usernameRef.current)) {
+          reg.flushPending(id => filesRef.current.find(f => f.id === id));
+        }
+      }
       if (data.type==="join")     setUserList(prev=>prev.find(u=>u.name===data.name)?prev:[...prev,{name:data.name,color:data.color}]);
       if (data.type==="leave")    setUserList(prev=>prev.filter(u=>u.name!==data.name));
       if (data.type==="chat")     setMessages(prev=>[...prev,{name:data.name,color:data.color,text:data.text,time:data.time}]);
@@ -402,7 +449,10 @@ function EditorPage() {
         }
       }
     };
-    return () => ws.close();
+    };
+
+    connect();
+    return () => { stopped = true; clearTimeout(retryTimer); wsRef.current?.close(); bindingRef.current?.destroy(); bindingRef.current = null; reg.destroyAll(); yRef.current = null; };
   }, [roomId]);
 
   useEffect(() => {
@@ -436,11 +486,11 @@ function EditorPage() {
   }, [messages]);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
+  // Local typing: mirror the text into React state (used by Run and Export). Syncing to other users is
+  // done by the Yjs binding, not here.
   const handleCodeChange = useCallback((value) => {
     if (isRemoteChange.current) return;
     setFiles(prev=>prev.map(f=>f.id===activeFileId?{...f,code:value}:f));
-    if (wsRef.current?.readyState===1)
-      wsRef.current.send(JSON.stringify({type:"code",code:value,fileId:activeFileId,sentAt:Date.now()}));
   }, [activeFileId]);
 
   function broadcastCursor(line, column) {
@@ -454,6 +504,9 @@ function EditorPage() {
 
   function handleEditorMount(editor, monaco) {
     editorRef.current=editor; monacoRef.current=monaco; editorFileIdRef.current=activeFileId;
+    bindingRef.current?.destroy(); bindingRef.current=null;
+    const ytext = yRef.current?.ytext(activeFileId);
+    if (ytext) bindingRef.current = bindYTextToMonaco(ytext, editor, monaco, isRemoteChange);
     editor.addCommand(monaco.KeyMod.CtrlCmd|monaco.KeyCode.KeyP,()=>{});
     editor.onDidChangeCursorPosition(e=>setCursorPos({line:e.position.lineNumber,col:e.position.column}));
     editor.onDidChangeModelContent(()=>{
@@ -469,26 +522,27 @@ function EditorPage() {
   }
 
   function handleLanguageChange(newLang) {
-    setFiles(prev=>prev.map(f=>{
-      if (f.id!==activeFileId) return f;
-      const base=f.name.includes(".")?f.name.slice(0,f.name.lastIndexOf(".")):f.name;
-      return {...f,language:newLang,name:`${base}.${LANG_TO_EXT[newLang]||"txt"}`};
-    }));
+    const cur=files.find(f=>f.id===activeFileId); if (!cur) return;
+    const base=cur.name.includes(".")?cur.name.slice(0,cur.name.lastIndexOf(".")):cur.name;
+    const newName=`${base}.${LANG_TO_EXT[newLang]||"txt"}`;
+    setFiles(prev=>prev.map(f=>f.id===activeFileId?{...f,language:newLang,name:newName}:f));
     if (wsRef.current?.readyState===1)
-      wsRef.current.send(JSON.stringify({type:"language",language:newLang,changedBy:usernameRef.current,fileId:activeFileId}));
+      wsRef.current.send(JSON.stringify({type:"language",language:newLang,name:newName,fileId:activeFileId}));
   }
 
   function createNewFile() {
     if (!newFileName.trim()) return;
     const ext=newFileName.split(".").pop();
-    const nf={id:Date.now().toString(),name:newFileName.trim(),language:EXT_TO_LANG[ext]||"plaintext",code:""};
+    const nf={id:newFileId(),name:newFileName.trim(),language:EXT_TO_LANG[ext]||"plaintext",code:""};
+    const ystate = yRef.current.createLocal(nf.id, nf.code);   // this client owns the new file's initial history
     setFiles(prev=>[...prev,nf]); setActiveFileId(nf.id);
     setNewFileName(""); setShowNewFile(false);
-    if (wsRef.current?.readyState===1) wsRef.current.send(JSON.stringify({type:"newfile",file:nf}));
+    if (wsRef.current?.readyState===1) wsRef.current.send(JSON.stringify({type:"newfile",file:{id:nf.id,name:nf.name,language:nf.language,ystate}}));
   }
 
   function handleDeleteFile(fileId) {
     if (files.length<=1) return;
+    yRef.current?.remove(fileId);
     const rem=files.filter(f=>f.id!==fileId); setFiles(rem);
     if (activeFileId===fileId) setActiveFileId(rem[0].id);
     if (wsRef.current?.readyState===1) wsRef.current.send(JSON.stringify({type:"deletefile",fileId}));
@@ -535,9 +589,11 @@ function EditorPage() {
       const reader=new FileReader();
       reader.onload=ev=>{
         const ext=file.name.split(".").pop();
-        const nf={id:Date.now()+Math.random()+"",name:file.name,language:EXT_TO_LANG[ext]||"plaintext",code:ev.target.result};
+        const code = String(ev.target.result).replace(/\r\n?/g, "\n");   // the editor model uses \n line breaks
+        const nf={id:newFileId(),name:file.name,language:EXT_TO_LANG[ext]||"plaintext",code};
+        const ystate = yRef.current.createLocal(nf.id, code);
         setFiles(prev=>[...prev,nf]); setActiveFileId(nf.id);
-        if (wsRef.current?.readyState===1) wsRef.current.send(JSON.stringify({type:"newfile",file:nf}));
+        if (wsRef.current?.readyState===1) wsRef.current.send(JSON.stringify({type:"newfile",file:{id:nf.id,name:nf.name,language:nf.language,ystate}}));
       };
       reader.readAsText(file);
     }); input.click();
