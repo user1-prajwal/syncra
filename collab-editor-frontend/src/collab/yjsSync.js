@@ -184,8 +184,14 @@ export function bindYTextToMonaco(ytext, editor, monaco, remoteFlag) {
   };
   ytext.observe(observer);
 
+  // Readiness signal: until this attribute is set, keystrokes in the editor are NOT yet connected to the
+  // shared document. The browser tests wait for it before typing.
+  const dom = editor.getContainerDomNode();
+  dom.setAttribute("data-collab-bound", "true");
+
   return {
     destroy() {
+      dom.removeAttribute("data-collab-bound");
       ytext.unobserve(observer);
       onModelChange.dispose();
       undoManager.destroy();
