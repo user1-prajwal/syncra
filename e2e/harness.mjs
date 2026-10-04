@@ -37,13 +37,13 @@ let currentStack = null
 const ARTIFACTS = path.join(path.dirname(fileURLToPath(import.meta.url)), 'artifacts')
 
 // Printed (and saved) when a test fails or hangs, so a CI failure explains itself.
-async function dumpDiagnostics(testName) {
-  if (!currentStack) return
+async function dumpDiagnostics(testName, pages) {
   fs.mkdirSync(ARTIFACTS, { recursive: true })
   console.log(`\n===== DIAGNOSTICS for: ${testName} =====`)
   let i = 0
-  for (const page of currentStack.pages) {
+  for (const page of pages) {
     i++
+    await withTimeout(page.bringToFront(), 1500, 'bringToFront').catch(() => {}) // hidden tabs cannot be screenshotted
     try {
       const info = await withTimeout(
         page.evaluate(() => ({
@@ -51,7 +51,9 @@ async function dumpDiagnostics(testName) {
           visibility: document.visibilityState,
           hasFocus: document.hasFocus(),
           editors: window.monaco ? window.monaco.editor.getEditors().length : 'monaco not loaded',
-          text: document.body.innerText.slice(0, 300).replace(/\s+/g, ' '),
+          editorBound: window.monaco ? window.monaco.editor.getEditors().map((e) => e.getContainerDomNode().dataset.collabBound === 'true') : [],
+          editorText: window.monaco && window.monaco.editor.getEditors()[0] ? window.monaco.editor.getEditors()[0].getModel().getValue().slice(0, 120) : null,
+          page: document.body.innerText.slice(0, 250).replace(/\s+/g, ' '),
         })),
         3000,
         'page.evaluate',
@@ -60,10 +62,10 @@ async function dumpDiagnostics(testName) {
     } catch (e) {
       console.log(`tab ${i}: could not inspect page (${e.message})`)
     }
-    console.log(`tab ${i} console (last 15):\n  ` + page.logs.slice(-15).join('\n  '))
+    console.log(`tab ${i} console (last 10):\n  ` + page.logs.slice(-10).join('\n  '))
     try {
       const file = path.join(ARTIFACTS, `${testName.replace(/\W+/g, '_').slice(0, 60)}-tab${i}.png`)
-      await withTimeout(page.screenshot({ path: file }), 4000, 'screenshot')
+      await withTimeout(page.screenshot({ path: file }), 3000, 'screenshot')
       console.log(`tab ${i} screenshot: ${file}`)
     } catch (e) {
       console.log(`tab ${i}: no screenshot (${e.message})`)
@@ -75,7 +77,9 @@ async function dumpDiagnostics(testName) {
 // A test with its OWN timeout. If a step hangs, only this test fails (with diagnostics) instead of the
 // whole file timing out silently and losing every result in it.
 export function e2eTest(name, fn, { timeout = 60000 } = {}) {
-  test(name, { timeout: timeout + 20000 }, async () => {
+  // node's own limit is far larger than ours so that our diagnostics always get to finish
+  test(name, { timeout: timeout + 60000 }, async () => {
+    const firstPage = currentStack ? currentStack.pages.length : 0
     let timer
     const hung = new Promise((_, rej) => {
       timer = setTimeout(() => rej(new Error(`test hung: no result after ${timeout}ms (see DIAGNOSTICS above)`)), timeout)
@@ -83,10 +87,12 @@ export function e2eTest(name, fn, { timeout = 60000 } = {}) {
     try {
       await Promise.race([fn(), hung])
     } catch (e) {
-      await dumpDiagnostics(name)
+      await dumpDiagnostics(name, currentStack ? currentStack.pages.slice(firstPage) : [])
       throw e
     } finally {
       clearTimeout(timer)
+      // Close this test's tabs: leftover tabs keep reconnecting to the server and slow every later test down.
+      for (const page of currentStack ? currentStack.pages.slice(firstPage) : []) await withTimeout(page.close(), 3000, 'page.close').catch(() => {})
     }
   })
 }
@@ -157,6 +163,11 @@ export async function newTab(stack, room, name) {
       window.IntersectionObserver = class { observe() {} unobserve() {} disconnect() {} takeRecords() { return [] } }
     })
   }
+  if (process.env.E2E_CPU_THROTTLE) {
+    // Test-only switch: make the browser N times slower, like a busy CI runner, to expose timing races.
+    const cdp = await page.createCDPSession()
+    await cdp.send('Emulation.setCPUThrottlingRate', { rate: Number(process.env.E2E_CPU_THROTTLE) })
+  }
   await page.setViewport({ width: 1280, height: 800 }) // desktop layout (the app switches to a mobile layout below 768px)
   await page.setRequestInterception(true)
   page.on('request', (req) => {
@@ -180,15 +191,40 @@ export async function newTab(stack, room, name) {
   await page.evaluate((s) => document.querySelector(s).focus(), NAME_INPUT)
   await page.keyboard.type(name)
   await page.keyboard.press('Enter')
-  await waitUntil(
-    () => page.evaluate(() => !!(window.monaco && window.monaco.editor.getEditors().length > 0 && window.monaco.editor.getEditors()[0].getModel())),
-    30000,
-    'Monaco to load',
-  )
+  await waitUntil(() => page.evaluate(() => !!window.monaco), 30000, 'Monaco to load')
+  await waitForBoundEditor(page, 30000)
   return page
 }
 
-export const editorText = (page) => page.evaluate(() => window.monaco.editor.getEditors()[0].getModel().getValue())
+// The editor that is connected to the shared document (and not one that is about to be replaced).
+// `data-collab-bound` is set by the app's Yjs binding; `data-stale` is set by these helpers on editors
+// that existed before an action that remounts the editor (new file, file switch).
+const PICK_EDITOR = `(() => {
+  const eds = window.monaco.editor.getEditors()
+  return eds.find((e) => { const d = e.getContainerDomNode(); return d.dataset.collabBound === 'true' && !d.dataset.stale }) || eds[0]
+})()`
+const HAS_BOUND_EDITOR = `window.monaco.editor.getEditors().some((e) => { const d = e.getContainerDomNode(); return d.dataset.collabBound === 'true' && !d.dataset.stale })`
+
+export const waitForBoundEditor = (page, ms = 15000) =>
+  waitUntil(() => page.evaluate(HAS_BOUND_EDITOR), ms, 'the editor to be connected to the shared document')
+
+const markEditorsStale = (page) =>
+  page.evaluate(() => window.monaco.editor.getEditors().forEach((e) => e.getContainerDomNode().setAttribute('data-stale', '1')))
+
+// After an action that should remount the editor: wait for the NEW editor to connect. If the editor was
+// not remounted (e.g. the file was already open), fall back after a short wait.
+async function waitForFreshEditor(page) {
+  try {
+    await waitForBoundEditor(page, 4000)
+  } catch {
+    await page.evaluate(() => window.monaco.editor.getEditors().forEach((e) => e.getContainerDomNode().removeAttribute('data-stale')))
+    await waitForBoundEditor(page, 15000)
+  }
+}
+
+export const editorText = (page) => page.evaluate(`${PICK_EDITOR}.getModel().getValue()`)
+
+export const focusEditor = (page) => page.evaluate(`${PICK_EDITOR}.focus()`)
 
 export async function waitForText(page, expected, timeout = 8000) {
   const start = Date.now()
@@ -203,7 +239,8 @@ export async function waitForText(page, expected, timeout = 8000) {
 
 // Replace the whole document with `text` (focus + select-all + type), as a user would.
 export async function typeInEditor(page, text, { replaceAll = false } = {}) {
-  await page.evaluate(() => window.monaco.editor.getEditors()[0].focus())
+  await waitForBoundEditor(page) // never type into an editor that is not yet connected to the document
+  await focusEditor(page)
   if (replaceAll) {
     await page.keyboard.down('Control')
     await page.keyboard.press('a')
@@ -232,6 +269,7 @@ const clickSelector = (page, selector) =>
 
 export async function createFileViaUI(page, name) {
   await page.bringToFront()
+  await markEditorsStale(page)
   await clickSelector(page, 'button[title="New file"]')
   const INPUT = 'input[placeholder="filename.py"]'
   await waitUntil(() => page.evaluate((s) => !!document.querySelector(s), INPUT), 10000, 'the new-file input')
@@ -239,6 +277,7 @@ export async function createFileViaUI(page, name) {
   await page.keyboard.type(name)
   await page.keyboard.press('Enter')
   await waitUntil(async () => (await fileNames(page)).includes(name), 8000, `${name} to appear`)
+  await waitForFreshEditor(page) // the new file opens in a NEW editor: wait until it is connected
 }
 
 export async function deleteFileViaUI(page, name) {
@@ -256,14 +295,12 @@ export async function deleteFileViaUI(page, name) {
 
 export async function selectFile(page, name) {
   await page.bringToFront()
+  await markEditorsStale(page)
   await page.evaluate(`${PANEL_ROWS}.find((d) => d.children[1].textContent === ${JSON.stringify(name)}).click()`)
-  await sleep(300) // the editor remounts for the selected file
-  await waitUntil(() => page.evaluate(() => window.monaco.editor.getEditors().length > 0), 10000, 'the editor to remount')
+  await waitForFreshEditor(page)
 }
 
-export const moveCursorToEnd = (page) =>
-  page.evaluate(() => {
-    const ed = window.monaco.editor.getEditors()[0]
-    ed.setPosition(ed.getModel().getFullModelRange().getEndPosition())
-    ed.focus()
-  })
+export const moveCursorToEnd = async (page) => {
+  await waitForBoundEditor(page)
+  await page.evaluate(`(() => { const ed = ${PICK_EDITOR}; ed.setPosition(ed.getModel().getFullModelRange().getEndPosition()); ed.focus() })()`)
+}

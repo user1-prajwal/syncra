@@ -1,6 +1,6 @@
 import { before, after } from 'node:test'
 import assert from 'node:assert/strict'
-import { e2eTest, startStack, newTab, waitForText, typeInEditor, editorText, moveCursorToEnd, createFileViaUI, selectFile, fileNames, waitUntil, sleep } from '../harness.mjs'
+import { e2eTest, focusEditor, startStack, newTab, waitForText, typeInEditor, editorText, moveCursorToEnd, createFileViaUI, selectFile, fileNames, waitUntil, sleep } from '../harness.mjs'
 
 let stack
 before(async () => { stack = await startStack() })
@@ -82,7 +82,7 @@ e2eTest('undo only undoes MY edits, not what other people typed', async () => {
   await typeInEditor(b, 'bbb')
   await waitForText(a, 'aaabbb')
 
-  await a.evaluate(() => window.monaco.editor.getEditors()[0].focus())
+  await focusEditor(a)
   await a.keyboard.down('Control')
   await a.keyboard.press('z')
   await a.keyboard.up('Control')
