@@ -1,6 +1,6 @@
-import { test, before, after } from 'node:test'
+import { before, after } from 'node:test'
 import assert from 'node:assert/strict'
-import { startStack, newTab, waitForText, typeInEditor, editorText, moveCursorToEnd, createFileViaUI, selectFile, fileNames, waitUntil, sleep } from '../harness.mjs'
+import { e2eTest, startStack, newTab, waitForText, typeInEditor, editorText, moveCursorToEnd, createFileViaUI, selectFile, fileNames, waitUntil, sleep } from '../harness.mjs'
 
 let stack
 before(async () => { stack = await startStack() })
@@ -8,7 +8,7 @@ after(async () => { await stack.stop() })
 
 const dropAllSockets = () => { for (const ws of stack.collab.wss.clients) ws.terminate() }
 
-test('three users typing at once in the same spot all keep their text and converge', async () => {
+e2eTest('three users typing at once in the same spot all keep their text and converge', async () => {
   const [a, b, c] = [await newTab(stack, 'Y3', 'Ana'), await newTab(stack, 'Y3', 'Bo'), await newTab(stack, 'Y3', 'Cy')]
   await typeInEditor(a, '', { replaceAll: true })
   await waitForText(b, '')
@@ -20,7 +20,7 @@ test('three users typing at once in the same spot all keep their text and conver
   for (const ch of 'ABC') assert.equal((ta.match(new RegExp(ch, 'g')) || []).length, 30, `${ch} characters lost: ${ta}`)
 })
 
-test('edits made while disconnected merge cleanly after reconnecting, on both sides', async () => {
+e2eTest('edits made while disconnected merge cleanly after reconnecting, on both sides', async () => {
   const a = await newTab(stack, 'YOFF', 'Ana')
   const b = await newTab(stack, 'YOFF', 'Bo')
   await typeInEditor(a, 'base', { replaceAll: true })
@@ -41,7 +41,7 @@ test('edits made while disconnected merge cleanly after reconnecting, on both si
   assert.equal(final.length, 'base-A-offline-B-offline'.length)
 })
 
-test('after the SERVER restarts and loses all state, the clients repopulate it: no lost text, no duplicated default file', async () => {
+e2eTest('after the SERVER restarts and loses all state, the clients repopulate it: no lost text, no duplicated default file', async () => {
   const a = await newTab(stack, 'YRST', 'Ana')
   const b = await newTab(stack, 'YRST', 'Bo')
   await typeInEditor(a, 'MY-WORK\n') // inserted before the default text
@@ -69,7 +69,7 @@ test('after the SERVER restarts and loses all state, the clients repopulate it: 
   assert.equal(await editorText(a), 'extra content') // Ana still has extra.py open
 })
 
-test('undo only undoes MY edits, not what other people typed', async () => {
+e2eTest('undo only undoes MY edits, not what other people typed', async () => {
   const a = await newTab(stack, 'YUND', 'Ana')
   const b = await newTab(stack, 'YUND', 'Bo')
   await typeInEditor(a, '', { replaceAll: true })

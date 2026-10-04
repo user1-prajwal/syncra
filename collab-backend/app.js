@@ -311,12 +311,21 @@ function createCollabServer(options = {}) {
         server.listen(port, () => resolve(server.address().port))
       })
     },
+    // Never waits indefinitely: stop accepting connections FIRST (a browser tab that keeps reconnecting
+    // during shutdown would otherwise keep server.close() pending forever), drop every socket, and
+    // resolve after at most 3 s even if something is still lingering.
     close() {
       clearInterval(heartbeat)
       store.close()
-      for (const ws of wss.clients) ws.terminate()
       return new Promise((resolve) => {
-        wss.close(() => server.close(() => resolve()))
+        const timer = setTimeout(resolve, 3000)
+        timer.unref?.()
+        server.close(() => {
+          clearTimeout(timer)
+          resolve()
+        })
+        for (const ws of wss.clients) ws.terminate()
+        wss.close()
         server.closeAllConnections?.()
       })
     },

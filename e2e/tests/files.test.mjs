@@ -1,12 +1,12 @@
-import { test, before, after } from 'node:test'
+import { before, after } from 'node:test'
 import assert from 'node:assert/strict'
-import { startStack, newTab, waitForText, typeInEditor, fileNames, createFileViaUI, deleteFileViaUI, selectFile, waitUntil, sleep } from '../harness.mjs'
+import { e2eTest, startStack, newTab, waitForText, typeInEditor, fileNames, createFileViaUI, deleteFileViaUI, selectFile, waitUntil, sleep } from '../harness.mjs'
 
 let stack
 before(async () => { stack = await startStack() })
 after(async () => { await stack.stop() })
 
-test('a deleted file stays deleted for current users AND for people who join later', async () => {
+e2eTest('a deleted file stays deleted for current users AND for people who join later', async () => {
   const a = await newTab(stack, 'FILE01', 'Ana')
   const b = await newTab(stack, 'FILE01', 'Bo')
   assert.deepEqual(await fileNames(a), ['main.py'])
@@ -24,7 +24,7 @@ test('a deleted file stays deleted for current users AND for people who join lat
   await waitForText(late, 'x = 1')
 })
 
-test('typing in a second file syncs, and switching files keeps each file\'s own text', async () => {
+e2eTest('typing in a second file syncs, and switching files keeps each file\'s own text', async () => {
   const a = await newTab(stack, 'FILE02', 'Ana')
   const b = await newTab(stack, 'FILE02', 'Bo')
   await typeInEditor(a, 'first file', { replaceAll: true })

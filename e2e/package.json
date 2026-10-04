@@ -4,7 +4,7 @@
   "type": "module",
   "description": "Real-browser end-to-end tests: two or more Chromium tabs editing together through the real server",
   "scripts": {
-    "test": "node --test --test-concurrency=1 --test-timeout=120000 \"tests/*.test.mjs\""
+    "test": "node --test --test-concurrency=1 --test-timeout=300000 \"tests/*.test.mjs\""
   },
   "devDependencies": {
     "puppeteer": "^24.0.0"

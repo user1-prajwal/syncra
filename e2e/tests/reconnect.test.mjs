@@ -1,6 +1,6 @@
-import { test, before, after } from 'node:test'
+import { before, after } from 'node:test'
 import assert from 'node:assert/strict'
-import { startStack, newTab, waitForText, typeInEditor, sleep } from '../harness.mjs'
+import { e2eTest, startStack, newTab, waitForText, typeInEditor, sleep } from '../harness.mjs'
 
 let stack
 before(async () => { stack = await startStack() })
@@ -12,7 +12,7 @@ const waitUntil = async (fn, ms = 15000, label = 'condition') => {
   throw new Error(`timed out waiting for ${label}`)
 }
 
-test('after the server drops every connection, tabs reconnect, re-join under the same name, and keep syncing', async () => {
+e2eTest('after the server drops every connection, tabs reconnect, re-join under the same name, and keep syncing', async () => {
   const a = await newTab(stack, 'REC01', 'Ana')
   const b = await newTab(stack, 'REC01', 'Bo')
   await typeInEditor(a, 'before', { replaceAll: true })

@@ -601,3 +601,22 @@ describe('reconnecting', () => {
     expect(ra.text('1').startsWith('edited while Ana was offline\n')).toBe(true)
   })
 })
+
+describe('shutdown', () => {
+  test('close() resolves promptly and refuses new connections, even while a client keeps reconnecting', async () => {
+    const a = await connect(srv.port, 'SHUT1')
+    await a.join('Ana')
+    const port = srv.port
+    const closing = srv.stop()
+    // a client that reconnects in the middle of shutdown (like a browser tab with auto-reconnect)
+    const retry = connect(port, 'SHUT1').then(
+      (c) => c.closed.then(() => 'connected-then-dropped'),
+      () => 'refused',
+    )
+    const started = Date.now()
+    await closing
+    expect(Date.now() - started).toBeLessThan(2500)
+    expect(['refused', 'connected-then-dropped']).toContain(await retry)
+    srv = await startServer() // keep afterEach happy
+  })
+})

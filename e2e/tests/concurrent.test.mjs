@@ -1,12 +1,12 @@
-import { test, before, after } from 'node:test'
+import { before, after } from 'node:test'
 import assert from 'node:assert/strict'
-import { startStack, newTab, waitForText, typeInEditor, editorText, sleep } from '../harness.mjs'
+import { e2eTest, startStack, newTab, waitForText, typeInEditor, editorText, sleep } from '../harness.mjs'
 
 let stack
 before(async () => { stack = await startStack() })
 after(async () => { await stack.stop() })
 
-test('two users typing at the same position at the same time both keep their text and converge', async () => {
+e2eTest('two users typing at the same position at the same time both keep their text and converge', async () => {
   const a = await newTab(stack, 'CONC01', 'Ana')
   const b = await newTab(stack, 'CONC01', 'Bo')
   await typeInEditor(a, '', { replaceAll: true })

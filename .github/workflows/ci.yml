@@ -45,6 +45,7 @@ jobs:
     name: Browser end-to-end tests (real Chromium)
     runs-on: ubuntu-latest
     needs: [backend, frontend]
+    timeout-minutes: 15 # a hung browser test must never keep the job running for hours
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -57,3 +58,10 @@ jobs:
           npm ci --prefix e2e
       - name: Run browser tests
         run: npm test --prefix e2e
+      - name: Upload screenshots and diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-diagnostics
+          path: e2e/artifacts
+          if-no-files-found: ignore
