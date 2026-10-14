@@ -1,886 +1,386 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-function injectGlobal() {
-  if (document.getElementById("s-css")) return;
-  const el = document.createElement("style");
-  el.id = "s-css";
-  el.textContent = `
-    @import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800;900&family=Geist+Mono:wght@400;500;600&display=swap');
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html { scroll-behavior: smooth; }
-    body {
-      background: #0a0a0a;
-      font-family: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      -webkit-font-smoothing: antialiased;
-      color: #ededed;
-      overflow-x: hidden;
-    }
-    ::selection { background: rgba(255,255,255,0.15); }
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-track { background: #0a0a0a; }
-    ::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 3px; }
-    a { text-decoration: none; color: inherit; }
-    @keyframes blink { 0%,49%{opacity:1}50%,100%{opacity:0} }
-    @keyframes fadeUp { from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)} }
-    @keyframes fadeIn { from{opacity:0}to{opacity:1} }
-    @keyframes marquee { from{transform:translateX(0)}to{transform:translateX(-50%)} }
-    @keyframes ping { 0%{transform:scale(1);opacity:1}75%,100%{transform:scale(2);opacity:0} }
-    @media(prefers-reduced-motion:reduce){
-      *,*::before,*::after{animation-duration:0.01ms!important;transition-duration:0.01ms!important}
-    }
-    @media(max-width:860px){
-      .nav-links { display: none !important; }
-      .hero-grid { grid-template-columns: 1fr !important; }
-      .editor-panel { display: none !important; }
-      .hero-left { max-width: 100% !important; }
-      .feat-grid { grid-template-columns: 1fr 1fr !important; }
-      .mob-stack { flex-direction: column !important; }
-    }
-    @media(max-width:540px){
-      .feat-grid { grid-template-columns: 1fr !important; }
-      .footer-grid { grid-template-columns: 1fr 1fr !important; }
-    }
-  `;
-  document.head.appendChild(el);
+const GITHUB = "https://github.com/user1-prajwal/syncra";
+// No 0/O/1/I so a code is easy to read out loud. 32 symbols divide 256 evenly, so every symbol is equally likely.
+const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+function newRoomCode() {
+  const bytes = new Uint8Array(6);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => ALPHABET[b % 32]).join("");
 }
 
-// ─── Minimal icon set 
-const Chevron = () => (
-  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M5 12h14m-7-7 7 7-7 7" />
-  </svg>
-);
-const Github = ({ size = 16 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+// Shared base rules, same id and contents as the previous landing page (minus its landing-only parts),
+// left in place because other pages may rely on them.
+const GLOBAL_CSS = `
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800;900&family=Geist+Mono:wght@400;500;600&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:#0a0a0a;font-family:'Geist',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;-webkit-font-smoothing:antialiased;color:#ededed;overflow-x:hidden}
+::selection{background:rgba(255,255,255,.15)}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:#0a0a0a}::-webkit-scrollbar-thumb{background:#2a2a2a;border-radius:3px}
+a{text-decoration:none;color:inherit}
+@keyframes blink{0%,49%{opacity:1}50%,100%{opacity:0}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes ping{0%{transform:scale(1);opacity:1}75%,100%{transform:scale(2);opacity:0}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+`;
+
+// Everything below is scoped to .sx and removed when the page unmounts.
+const CSS = `
+.sx{--bg:#0a1020;--panel:#0f1730;--win:#0c1329;--line:#1d2847;--tx:#eaeef8;--mu:#93a0bd;--dim:#7685a8;--paper:#f3efe4;
+  --you:#6ea8ff;--pri:#ff8a5b;--kai:#b58cff;
+  position:relative;min-height:100vh;min-height:100dvh;display:grid;grid-template-rows:auto 1fr auto;
+  background:var(--bg);color:var(--tx);font-family:'Geist',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;overflow-x:hidden;overflow-x:clip}
+.sx::before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(55% 55% at 72% 48%,rgba(110,168,255,.08),transparent 72%)}
+.sx>*{position:relative}
+.sx :focus-visible{outline:2px solid var(--you);outline-offset:3px}
+body:has(.sx){background:#0a1020}
+
+.sx-h{display:flex;align-items:center;justify-content:space-between;height:64px;padding:0 clamp(20px,4vw,40px)}
+.sx-h img{display:block;height:28px;width:auto}
+.sx-wm{font-weight:700;font-size:18px;letter-spacing:-.02em}
+.sx-gh{display:flex;align-items:center;gap:7px;padding:6px 2px;color:var(--mu);font-size:14px;font-weight:500;transition:color .15s}
+.sx-gh:hover{color:var(--tx)}
+
+.sx-m{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:clamp(32px,5vw,72px);align-items:center;
+  width:100%;max-width:1280px;margin:0 auto;padding:16px clamp(20px,4vw,40px) 24px}
+.sx h1{font-size:clamp(36px,3.9vw,54px);line-height:1.06;letter-spacing:-.035em;font-weight:600;text-wrap:balance;margin-bottom:22px}
+.sx .nw{white-space:nowrap}
+.sx-p{font-size:17px;line-height:1.65;color:var(--mu);max-width:44ch;margin-bottom:28px;text-wrap:pretty}
+
+.sx-act{display:grid;gap:14px;max-width:400px}
+.sx-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:50px;border:0;border-radius:10px;
+  background:var(--paper);color:#0a1020;font:600 15px 'Geist',sans-serif;cursor:pointer;transition:transform .12s,background .15s}
+.sx-btn:hover{background:#fff;transform:translateY(-1px)}
+.sx-btn:active{transform:none}
+.sx-or{display:flex;align-items:center;gap:12px;font-size:13px;color:var(--dim)}
+.sx-or::before,.sx-or::after{content:"";flex:1;height:1px;background:var(--line)}
+.sx-join{display:flex;border:1px solid var(--line);border-radius:10px;background:var(--panel);transition:border-color .15s}
+.sx-join:focus-within{border-color:var(--you);box-shadow:0 0 0 1px var(--you)}
+.sx-join input{flex:1;min-width:0;height:48px;padding:0 16px;background:none;border:0;border-radius:10px 0 0 10px;color:var(--tx);
+  font:500 16px 'Geist Mono',ui-monospace,monospace;letter-spacing:.22em;text-transform:uppercase}
+.sx-join input:focus-visible{outline:none}
+.sx-join input::placeholder{color:var(--dim);font:400 15px 'Geist',sans-serif;letter-spacing:0;text-transform:none}
+.sx-join button{padding:0 22px;border:0;border-left:1px solid var(--line);border-radius:0 9px 9px 0;background:none;color:var(--tx);
+  font:600 14px 'Geist',sans-serif;cursor:pointer;transition:background .15s}
+.sx-join button:hover{background:rgba(255,255,255,.05)}
+.sx-join button:focus-visible{outline-offset:-3px}
+.sx-err{font-size:13px;color:#ff9a9a}
+.sx-note{font-size:14px;color:var(--dim)}
+
+/* collaborator cursors, used in the headline and in the editor preview */
+.sx .cur{position:absolute;width:2px;height:22px}
+.sx .cur::after{content:"";position:absolute;inset:0;background:var(--c);animation:sx-blink 1.1s steps(1) infinite}
+.sx .cur[data-name]::before{content:attr(data-name);position:absolute;left:0;bottom:100%;padding:0 6px;font:600 11px/17px 'Geist',sans-serif;letter-spacing:0;white-space:nowrap;
+  background:var(--c);color:#0a1020;border-radius:4px 4px 4px 0}
+.sx .cur.h{position:relative;display:inline-block;width:3px;height:.84em;margin:0 3px;vertical-align:-.04em}
+@keyframes sx-blink{50%{opacity:0}}
+
+.sx-pv{container-type:inline-size}
+.sx-w{border:1px solid var(--line);border-radius:12px;background:var(--win);overflow:hidden;min-width:0;
+  font:13px/22px 'Geist Mono',ui-monospace,monospace;font-size:min(13px,calc((100cqw - 68px)/24.4));text-rendering:geometricPrecision;box-shadow:0 40px 80px -24px rgba(0,0,0,.7)}
+.sx-w .bar{display:flex;align-items:center;justify-content:space-between;gap:12px;height:42px;padding-right:12px;background:var(--panel);border-bottom:1px solid var(--line)}
+.sx-w .tabs{display:flex;height:100%}
+.sx-w .tab{display:flex;align-items:center;padding:0 16px;border-right:1px solid var(--line);color:var(--dim);font-size:12px}
+.sx-w .tab.on{color:var(--tx);background:var(--win);box-shadow:inset 0 -2px 0 var(--you)}
+.sx-w .who{display:flex;align-items:center;gap:12px;color:var(--dim);font-size:11px}
+.sx-w .avs{display:flex;padding-left:6px}
+.sx-w .av{display:grid;place-items:center;width:22px;height:22px;margin-left:-6px;border-radius:50%;border:2px solid var(--panel);
+  background:var(--c);color:#0a1020;font:700 10px/1 'Geist',sans-serif;font-style:normal}
+.sx-w .runb{display:flex;align-items:center;gap:6px;padding:3px 10px;border:1px solid var(--line);border-radius:6px;color:var(--tx);font:500 11px/18px 'Geist',sans-serif}
+.sx-w .code{position:relative;display:flex;padding:16px 0;min-height:204px}
+.sx-w .gut{flex:none;width:44px;padding-right:14px;text-align:right;color:#35415f;font-size:12px;user-select:none}
+.sx-w .lines{position:relative;flex:1;min-width:0;margin-left:16px;white-space:pre}
+.sx-w .ln{height:22px}
+.sx-w .sel{position:absolute;height:22px;border-radius:2px;background:rgba(181,140,255,.24)}
+.sx-w .t-k{color:#c4a7ff}.sx-w .t-f{color:#7cc4ff}.sx-w .t-b{color:#ffd479}.sx-w .t-s{color:#a5e08a}.sx-w .t-n{color:#ffb86b}.sx-w .t-c{color:#7685a8;font-style:italic}
+.sx-w .chat{position:absolute;top:12px;right:12px;width:176px;display:grid;gap:6px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;
+  background:rgba(15,23,48,.96);box-shadow:0 12px 30px rgba(0,0,0,.45);font:12px/1.45 'Geist',sans-serif;color:var(--mu)}
+.sx-w .chat b{margin-right:6px;font-weight:600;color:var(--c)}
+.sx-w .out{display:flex;align-items:baseline;gap:12px;padding:10px 16px;border-top:1px solid var(--line);background:#080d1c;font-size:12px}
+.sx-w .out span{color:var(--dim);font:500 12px 'Geist',sans-serif}
+.sx-w .out code{color:#a5e08a;font:inherit}
+
+.sx-s{display:flex;flex-wrap:wrap;align-items:center;gap:6px 28px;padding:13px clamp(20px,4vw,40px);border-top:1px solid var(--line);
+  background:rgba(8,13,28,.8);font-size:12.5px;color:var(--dim)}
+.sx-s a{margin-left:auto;color:var(--mu);transition:color .15s}
+.sx-s a:hover{color:var(--tx)}
+
+@media(max-width:960px){
+  .sx-m{grid-template-columns:minmax(0,1fr);gap:36px;padding-top:8px}
+  .sx h1{font-size:clamp(36px,6.2vw,54px)}
+  .sx-pv{max-width:720px}
+  .sx-s a{margin-left:0}
+}
+@container (max-width:540px){.sx-w .chat{display:none}}
+@container (max-width:430px){.sx-w .tab:nth-child(2),.sx-w .rm{display:none}}
+@media(prefers-reduced-motion:reduce){
+  .sx *,.sx *::before,.sx *::after{animation:none!important;transition:none!important}
+}
+`;
+
+function useStyles() {
+  useLayoutEffect(() => {
+    if (!document.getElementById("s-css")) {
+      const g = document.createElement("style");
+      g.id = "s-css";
+      g.textContent = GLOBAL_CSS;
+      document.head.appendChild(g);
+    }
+    const el = document.createElement("style");
+    el.textContent = CSS;
+    document.head.appendChild(el);
+    return () => el.remove();
+  }, []);
+}
+
+const Github = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
     <path d="M12 .5C5.73.5.5 5.74.5 12.02c0 5.1 3.29 9.4 7.86 10.94.57.1.79-.25.79-.55v-2.1c-3.2.7-3.87-1.36-3.87-1.36-.53-1.32-1.29-1.67-1.29-1.67-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.2 1.77 1.2 1.03 1.76 2.7 1.25 3.36.96.1-.75.4-1.25.73-1.53-2.55-.29-5.23-1.28-5.23-5.7 0-1.26.45-2.29 1.18-3.09-.12-.29-.51-1.46.11-3.04 0 0 .97-.31 3.18 1.18a11.05 11.05 0 0 1 5.8 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.58.24 2.75.12 3.04.74.8 1.18 1.83 1.18 3.09 0 4.43-2.69 5.41-5.25 5.69.42.36.78 1.07.78 2.16v3.2c0 .31.21.65.8.55A10.99 10.99 0 0 0 23.5 12C23.5 5.74 18.27.5 12 .5z" />
   </svg>
 );
+const Plus = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
+    <path d="M12 5v14M5 12h14" />
+  </svg>
+);
+const Play = () => (
+  <svg width="9" height="9" viewBox="0 0 10 10" aria-hidden="true">
+    <path d="M1.5 0.8v8.4L9 5z" fill="#a5e08a" />
+  </svg>
+);
 
-// ─── The live editor demo — this is the actual product ─────
-const DEMO_PEERS = [
-  { name: "you",   color: "#3b82f6", initials: "Y" },
-  { name: "priya", color: "#f97316", initials: "P" },
-  { name: "kai",   color: "#a855f7", initials: "K" },
+// ─── Editor preview ───────────────────────────────────────────────
+
+const LH = 22; // line height in px, matches CSS
+const PEOPLE = [
+  { n: "You", c: "var(--you)" },
+  { n: "Priya", c: "var(--pri)" },
+  { n: "Kai", c: "var(--kai)" },
 ];
-
-const CODE_FRAMES = [
-  // Frame 0 — starting state
-  [
-    { text: "def",      color: "#c792ea" },
-    { text: " fibonacci",color: "#82aaff" },
-    { text: "(n):",     color: "#d4d4d4" },
-  ],
-  [
-    { text: "    if",   color: "#c792ea" },
-    { text: " n <= ",   color: "#d4d4d4" },
-    { text: "1",        color: "#f78c6c" },
-    { text: ":",        color: "#d4d4d4" },
-  ],
-  [
-    { text: "        return ", color: "#c792ea" },
-    { text: "n",        color: "#d4d4d4" },
-  ],
-  [
-    { text: "    return ", color: "#c792ea" },
-    { text: "fibonacci(",color: "#82aaff" },
-    { text: "n",        color: "#d4d4d4" },
-    { text: "-",        color: "#89ddff" },
-    { text: "1",        color: "#f78c6c" },
-    { text: ") + fibonacci(", color: "#82aaff" },
-    { text: "n",        color: "#d4d4d4" },
-    { text: "-",        color: "#89ddff" },
-    { text: "2",        color: "#f78c6c" },
-    { text: ")",        color: "#82aaff" },
-  ],
-  [],
-  [
-    { text: "# peter is writing tests...", color: "#546e7a" },
-  ],
-  [
-    { text: "print",    color: "#82aaff" },
-    { text: "(",        color: "#d4d4d4" },
-    { text: "fibonacci(", color: "#82aaff" },
-    { text: "10",       color: "#f78c6c" },
-    { text: "))",       color: "#d4d4d4" },
-  ],
+const CODE = [
+  "from collections import Counter",
+  "",
+  "def top_words(text, k=3):",
+  "    words = text.lower().split()",
+  "    return Counter(words).most_common(k)",
+  "",
+  "", // row 6: Priya types here, under a blank row so her label hides no code
+  'print(top_words("to be or not to be"))',
 ];
+const TYPED = "# next: strip punctuation";
+const TYPED_ROW = 6;
 
-function EditorDemo() {
-  // Simulate "priya" cursor moving between lines periodically
-  const [priyaLine, setPriyaLine] = useState(5);
-  const [outputVisible, setOutputVisible] = useState(false);
-  // const [runPulse, setRunPulse] = useState(false);
-  const [, setRunPulse] = useState(false);
+const KEYWORDS = /^(from|import|def|return)$/;
+function highlight(src) {
+  const re = /(#.*)|("[^"]*")|(\b\d+\b)|([A-Za-z_]\w*)|(\s+|.)/g;
+  const out = [];
+  let m;
+  let i = 0;
+  while ((m = re.exec(src))) {
+    const [text, comment, str, num, word] = m;
+    let cls = "";
+    if (comment) cls = "c";
+    else if (str) cls = "s";
+    else if (num) cls = "n";
+    else if (word) {
+      if (KEYWORDS.test(word)) cls = "k";
+      else if (src[re.lastIndex] === "(") cls = word === "print" ? "b" : "f";
+    }
+    out.push(cls ? <span key={i++} className={`t-${cls}`}>{text}</span> : text);
+  }
+  return out;
+}
 
+const reducedMotion = () =>
+  typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
+// Types the text, holds, backspaces quickly, pauses, repeats.
+function useTyping(text) {
+  const [n, setN] = useState(() => (reducedMotion() ? text.length : 0));
   useEffect(() => {
-    // Priya moves between lines
-    const iv = setInterval(() => {
-      setPriyaLine(prev => {
-        const lines = [4, 5, 6, 5];
-        const idx = lines.indexOf(prev);
-        return lines[(idx + 1) % lines.length];
-      });
-    }, 1800);
-    return () => clearInterval(iv);
-  }, []);
+    if (reducedMotion()) return;
+    const L = text.length;
+    const cycle = L + 60;
+    let s = 0;
+    const id = setInterval(() => {
+      s = (s + 1) % cycle;
+      if (s < L) setN(s);
+      else if (s < L + 40) setN(L);
+      else setN(Math.max(0, Math.round(L * (1 - (s - L - 40) / 10))));
+    }, 70);
+    return () => clearInterval(id);
+  }, [text]);
+  return n;
+}
 
-  // useEffect(() => {
-  //   // Output flickers on/off
-  //   const iv = setInterval(() => {
-  //     setRunPulse(true);
-  //     setTimeout(() => setRunPulse(false), 400);
-  //     setTimeout(() => setOutputVisible(true), 600);
-  //     setTimeout(() => setOutputVisible(false), 3000);
-  //   }, 5000);
-  //   setOutputVisible(true); // start visible
-  //   return () => clearInterval(iv);
-  // }, []);
+function Cur({ row, col, color, name }) {
+  return <span className="cur" data-name={name} aria-hidden="true" style={{ "--c": color, top: row * LH, left: `${col}ch` }} />;
+}
 
-  useEffect(() => {
-  const timers = [];
-
-  const iv = setInterval(() => {
-    setRunPulse(true);
-
-    timers.push(setTimeout(() => setRunPulse(false), 400));
-    timers.push(setTimeout(() => setOutputVisible(true), 600));
-    timers.push(setTimeout(() => setOutputVisible(false), 3000));
-  }, 5000);
-
-  return () => {
-    clearInterval(iv);
-    timers.forEach(clearTimeout);
-  };
-}, []);
-
+function EditorPreview() {
+  const typed = useTyping(TYPED);
   return (
-    <div style={{
-      background: "#111",
-      border: "1px solid #222",
-      borderRadius: 10,
-      overflow: "hidden",
-      fontFamily: "'Geist Mono', 'JetBrains Mono', monospace",
-      fontSize: 13,
-      lineHeight: "22px",
-      boxShadow: "0 32px 64px rgba(0,0,0,0.6)",
-    }}>
-      {/* Window chrome */}
-      <div style={{
-        background: "#161616",
-        borderBottom: "1px solid #222",
-        padding: "10px 14px",
-        display: "flex",
-        alignItems: "center",
-        gap: 12,
-      }}>
-        <div style={{ display: "flex", gap: 6 }}>
-          {["#ff5f57","#febc2e","#28c840"].map(c => (
-            <div key={c} style={{ width: 10, height: 10, borderRadius: "50%", background: c }} />
-          ))}
-        </div>
-        <span style={{ color: "#444", fontSize: 11, flex: 1, textAlign: "center" }}>
-          fibonacci.py
-        </span>
-        {/* Online peers */}
-        <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-          {DEMO_PEERS.map(p => (
-            <div key={p.name} title={p.name} style={{
-              width: 20, height: 20, borderRadius: "50%",
-              background: p.color,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 9, fontWeight: 700, color: "#fff",
-              border: "1.5px solid #111",
-            }}>
-              {p.initials}
-            </div>
-          ))}
-          <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#22c55e", marginLeft: 4, position: "relative" }}>
-            <div style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "#22c55e", animation: "ping 2s cubic-bezier(0,0,0.2,1) infinite" }} />
+    <div
+      className="sx-pv"
+      role="img"
+      aria-label="Preview of a Syncra room: three people editing main.py together, with live cursors, chat and a Run button"
+    >
+      <div className="sx-w">
+        <div className="bar">
+          <div className="tabs">
+            <span className="tab on">main.py</span>
+            <span className="tab">tests.py</span>
           </div>
-          <span style={{ color: "#555", fontSize: 10, marginLeft: 2 }}>3 online</span>
-        </div>
-      </div>
-
-      {/* Code area */}
-      <div style={{ display: "flex", background: "#0f0f0f" }}>
-        {/* Line numbers */}
-        <div style={{ padding: "16px 0", minWidth: 44, textAlign: "right", paddingRight: 14, borderRight: "1px solid #1a1a1a", userSelect: "none" }}>
-          {CODE_FRAMES.map((_, i) => (
-            <div key={i} style={{ color: "#333", fontSize: 12, lineHeight: "22px" }}>{i + 1}</div>
-          ))}
+          <div className="who">
+            <span className="rm">K3F9ZQ</span>
+            <span className="avs">
+              {PEOPLE.map((p) => (
+                <i key={p.n} className="av" style={{ "--c": p.c }}>{p.n[0]}</i>
+              ))}
+            </span>
+            <span className="runb"><Play /> Run</span>
+          </div>
         </div>
 
-        {/* Lines with cursors */}
-        <div style={{ padding: "16px 0 16px 16px", flex: 1, overflow: "hidden" }}>
-          {CODE_FRAMES.map((tokens, li) => (
-            <div key={li} style={{ position: "relative", lineHeight: "22px", display: "flex", alignItems: "center" }}>
-              {/* Priya's line highlight */}
-              {li === priyaLine && (
-                <div style={{
-                  position: "absolute", left: -16, right: 0, top: 0, bottom: 0,
-                  background: "rgba(249,115,22,0.05)",
-                  borderLeft: "2px solid rgba(249,115,22,0.4)",
-                }} />
-              )}
-              <span style={{ whiteSpace: "pre" }}>
-                {tokens.map((tok, ti) => (
-                  <span key={ti} style={{ color: tok.color }}>{tok.text}</span>
-                ))}
-                {/* Priya cursor */}
-                {li === priyaLine && (
-                  <span style={{
-                    display: "inline-flex", flexDirection: "column", alignItems: "flex-start",
-                    marginLeft: 1, verticalAlign: "middle",
-                  }}>
-                    <span style={{
-                      display: "block",
-                      background: DEMO_PEERS[1].color,
-                      color: "#fff",
-                      fontSize: 9,
-                      fontWeight: 700,
-                      padding: "0 4px",
-                      borderRadius: "3px 3px 3px 0",
-                      lineHeight: "14px",
-                      fontFamily: "'Geist', sans-serif",
-                      whiteSpace: "nowrap",
-                    }}>
-                      peter
-                    </span>
-                    <span style={{
-                      width: 2, height: 18,
-                      background: DEMO_PEERS[1].color,
-                      display: "block",
-                      animation: "blink 1.1s steps(1) infinite",
-                    }} />
-                  </span>
-                )}
-              </span>
-            </div>
-          ))}
+        <div className="code">
+          <div className="gut">
+            {CODE.map((_, i) => <div key={i} className="ln">{i + 1}</div>)}
+          </div>
+          <div className="lines">
+            {CODE.map((line, i) => (
+              <div key={i} className="ln">{highlight(i === TYPED_ROW ? TYPED.slice(0, typed) : line)}</div>
+            ))}
+            <span className="sel" style={{ top: 0, left: "24ch", width: "7ch" }} />
+            <Cur row={0} col={31} color="var(--kai)" name="Kai" />
+            <Cur row={TYPED_ROW} col={typed} color="var(--pri)" name="Priya" />
+            <Cur row={7} col={38} color="var(--you)" />
+          </div>
+          <div className="chat">
+            <p><b style={{ "--c": "var(--kai)" }}>Kai</b>can you take the tests?</p>
+            <p><b style={{ "--c": "var(--pri)" }}>Priya</b>on it</p>
+          </div>
         </div>
-      </div>
 
-      {/* Output */}
-      <div style={{
-        borderTop: "1px solid #1a1a1a",
-        background: "#0a0a0a",
-        padding: "8px 16px",
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-        minHeight: 36,
-      }}>
-        <span style={{ color: "#333", fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em" }}>output</span>
-        <span style={{ color: outputVisible ? "#22c55e" : "#1f1f1f", fontSize: 13, transition: "color 0.4s", fontWeight: 500 }}>
-          {outputVisible ? "55" : "—"}
-        </span>
-        {outputVisible && (
-          <span style={{ color: "#3b82f6", fontSize: 11, marginLeft: "auto", animation: "fadeIn 0.3s ease" }}>
-            synced to all 3 users
-          </span>
-        )}
+        <div className="out">
+          <span>Output</span>
+          <code>[('to', 2), ('be', 2), ('or', 1)]</code>
+        </div>
       </div>
     </div>
   );
 }
 
-// ─── Marquee strip 
-function Marquee() {
-  const langs = [
-    "Python", "·", "Java", "·", "C++", "·", "TypeScript", "·",
-    "Go", "·", "Rust", "·", "Ruby", "·", "Haskell", "·",
-    "PHP", "·", "C#", "·", "F#", "·", "JavaScript", "·",
-  ];
-  const items = [...langs, ...langs];
+// ─── Page ─────────────────────────────────────────────────────────
+
+function Header() {
+  const [logo, setLogo] = useState(true);
   return (
-    <div style={{
-      borderTop: "1px solid #161616",
-      borderBottom: "1px solid #161616",
-      background: "#0a0a0a",
-      overflow: "hidden",
-      padding: "12px 0",
-    }}>
-      <div style={{
-        display: "flex",
-        gap: 24,
-        width: "max-content",
-        animation: "marquee 30s linear infinite",
-      }}>
-        {items.map((lang, i) => (
-          <span key={i} style={{
-            fontSize: 12,
-            fontWeight: 500,
-            color: lang === "·" ? "#2a2a2a" : "#444",
-            letterSpacing: "0.04em",
-            whiteSpace: "nowrap",
-            fontFamily: lang === "·" ? undefined : "'Geist Mono', monospace",
-          }}>
-            {lang}
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ─── Navbar 
-function Navbar({ onCreate }) {
-  const [stuck, setStuck] = useState(false);
-  useEffect(() => {
-    const fn = () => setStuck(window.scrollY > 40);
-    window.addEventListener("scroll", fn, { passive: true });
-    return () => window.removeEventListener("scroll", fn);
-  }, []);
-
-  return (
-    <header style={{
-      position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
-      height: 56,
-      borderBottom: stuck ? "1px solid #1a1a1a" : "1px solid transparent",
-      background: stuck ? "rgba(10,10,10,0.92)" : "transparent",
-      backdropFilter: stuck ? "blur(12px)" : "none",
-      transition: "all 0.2s",
-      display: "flex", alignItems: "center",
-      padding: "0 32px",
-    }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginRight: "auto" }}>
-        <img src="/syncra-logo-dark.svg" alt="Syncra" style={{ height: 30 }} onError={e => { e.target.style.display='none'; }} />
-        {/* <span style={{ fontSize: 16, fontWeight: 700, letterSpacing: "-0.5px", color: "#ededed" }}>Syncra</span> */}
-      </div>
-
-      <nav className="nav-links" style={{ display: "flex", gap: 28, position: "absolute", left: "50%", transform: "translateX(-50%)" }}>
-        {[["#features","Features"],["#how","How it works"],["#faq","FAQ"]].map(([href, label]) => (
-          <a key={href} href={href} style={{
-            color: "#666", fontSize: 14, fontWeight: 500,
-            transition: "color 0.15s",
-          }}
-            onMouseEnter={e => e.target.style.color = "#ededed"}
-            onMouseLeave={e => e.target.style.color = "#666"}
-          >{label}</a>
-        ))}
-      </nav>
-
-      <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-        <a
-          href="https://github.com/user1-prajwal/syncra"
-          target="_blank"
-          rel="noreferrer"
-          style={{
-            display: "flex", alignItems: "center", gap: 6,
-            padding: "7px 14px",
-            background: "transparent",
-            border: "1px solid #222",
-            borderRadius: 7,
-            color: "#888",
-            fontSize: 13, fontWeight: 500,
-            transition: "all 0.15s",
-          }}
-          onMouseEnter={e => { e.currentTarget.style.borderColor = "#444"; e.currentTarget.style.color = "#ededed"; }}
-          onMouseLeave={e => { e.currentTarget.style.borderColor = "#222"; e.currentTarget.style.color = "#888"; }}
-        >
-          <Github size={13} />
-          GitHub
-        </a>
-        <button
-          onClick={onCreate}
-          style={{
-            display: "flex", alignItems: "center", gap: 6,
-            padding: "7px 16px",
-            background: "#ededed",
-            border: "none",
-            borderRadius: 7,
-            color: "#0a0a0a",
-            fontSize: 13, fontWeight: 600,
-            cursor: "pointer",
-            transition: "background 0.15s",
-          }}
-          onMouseEnter={e => e.currentTarget.style.background = "#fff"}
-          onMouseLeave={e => e.currentTarget.style.background = "#ededed"}
-        >
-          Open editor
-        </button>
-      </div>
+    <header className="sx-h">
+      {logo ? (
+        <img src="/syncra-logo-dark.svg" alt="Syncra" onError={() => setLogo(false)} />
+      ) : (
+        <span className="sx-wm">Syncra</span>
+      )}
+      <a className="sx-gh" href={GITHUB} target="_blank" rel="noreferrer">
+        <Github /> GitHub
+      </a>
     </header>
   );
 }
 
-// ─── Hero ──
 function Hero({ onCreate }) {
   const navigate = useNavigate();
-  const [roomCode, setRoomCode] = useState("");
+  const [code, setCode] = useState("");
   const [err, setErr] = useState("");
 
-  function join() {
-    const v = roomCode.trim().toUpperCase();
-    if (!v) { setErr("Enter a 6-character room code"); return; }
-    if (!/^[A-Z0-9]{6}$/.test(v)) { setErr("Room codes are 6 characters — letters and numbers only"); return; }
-    navigate(`/room/${v}`);
+  function onChange(e) {
+    const v = e.target.value;
+    const link = v.match(/\/room\/([A-Za-z0-9_-]+)/); // a pasted room link works too
+    const clean = (link ? link[1] : v).toUpperCase().replace(/[^A-Z0-9]/g, "");
+    // Typed input stops at 6. A pasted link keeps its whole id so Join can reject it rather than open the wrong room.
+    setCode(link ? clean.slice(0, 32) : clean.slice(0, 6));
+    setErr("");
+  }
+
+  function onJoin(e) {
+    e.preventDefault();
+    if (code.length !== 6) {
+      setErr(code ? "Room codes are 6 characters: letters and numbers." : "Enter a 6-character room code.");
+      return;
+    }
+    navigate(`/room/${code}`);
   }
 
   return (
-    <section style={{ minHeight: "100vh", display: "flex", alignItems: "center", padding: "80px 0 0" }}>
-      <div style={{ maxWidth: 1160, margin: "0 auto", width: "100%", padding: "0 32px" }}>
-        <div className="hero-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 64, alignItems: "center" }}>
-
-          {/* Left */}
-          <div className="hero-left" style={{ animation: "fadeUp 0.5s ease both" }}>
-            {/* Simple label — no badge, no glow dot */}
-            <p style={{ fontSize: 12, fontWeight: 600, color: "#555", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 20, fontFamily: "'Geist Mono', monospace" }}>
-              Real-time collaborative editor
-            </p>
-
-            <h1 style={{
-              fontSize: "clamp(42px, 5.5vw, 66px)",
-              fontWeight: 800,
-              lineHeight: 1.05,
-              letterSpacing: "-3px",
-              color: "#ededed",
-              marginBottom: 24,
-            }}>
-              Your teammate<br />
-              types here too.
-            </h1>
-
-            <p style={{
-              fontSize: 17,
-              lineHeight: 1.75,
-              color: "#555",
-              marginBottom: 36,
-              maxWidth: 400,
-              fontWeight: 400,
-            }}>
-              Six characters. That's all it takes. Share a room code — your collaborator joins, their cursor appears, and you're both in the same file. Live.
-            </p>
-
-            {/* Actions */}
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 12 }}>
-              <button
-                onClick={onCreate}
-                style={{
-                  display: "flex", alignItems: "center", gap: 8,
-                  padding: "12px 24px",
-                  background: "#ededed",
-                  border: "none", borderRadius: 8,
-                  color: "#0a0a0a",
-                  fontSize: 15, fontWeight: 600,
-                  cursor: "pointer",
-                  transition: "background 0.15s, transform 0.1s",
-                }}
-                onMouseEnter={e => { e.currentTarget.style.background = "#fff"; e.currentTarget.style.transform = "translateY(-1px)"; }}
-                onMouseLeave={e => { e.currentTarget.style.background = "#ededed"; e.currentTarget.style.transform = "translateY(0)"; }}
-              >
-                Create a room <Chevron />
-              </button>
-
-              {/* Join input — inline, unboxed */}
-              <div style={{ display: "flex", borderRadius: 8, overflow: "hidden", border: "1px solid #222" }}>
-                <input
-                  value={roomCode}
-                  onChange={e => { setRoomCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "")); setErr(""); }}
-                  onKeyDown={e => e.key === "Enter" && join()}
-                  maxLength={6}
-                  placeholder="ABCD12"
-                  style={{
-                    width: 110,
-                    padding: "12px 14px",
-                    background: "#111",
-                    border: "none",
-                    color: "#ededed",
-                    fontSize: 14,
-                    fontFamily: "'Geist Mono', monospace",
-                    letterSpacing: "0.2em",
-                    fontWeight: 500,
-                    outline: "none",
-                  }}
-                  onFocus={e => e.target.parentElement.style.borderColor = "#333"}
-                  onBlur={e => e.target.parentElement.style.borderColor = "#222"}
-                />
-                <button
-                  onClick={join}
-                  style={{
-                    padding: "12px 16px",
-                    background: "#161616",
-                    border: "none",
-                    borderLeft: "1px solid #222",
-                    color: "#888",
-                    cursor: "pointer",
-                    fontSize: 13,
-                    fontWeight: 600,
-                    display: "flex", alignItems: "center", gap: 5,
-                    transition: "color 0.15s, background 0.15s",
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.background = "#1e1e1e"; e.currentTarget.style.color = "#ededed"; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = "#161616"; e.currentTarget.style.color = "#888"; }}
-                >
-                  Join <Chevron />
-                </button>
-              </div>
-            </div>
-
-            {err && <p style={{ color: "#ef4444", fontSize: 13, marginBottom: 8 }}>{err}</p>}
-
-            <p style={{ fontSize: 13, color: "#333" }}>
-              No account. No install. Open source.
-            </p>
-          </div>
-
-          {/* Right — the demo */}
-          <div className="editor-panel" style={{ animation: "fadeUp 0.5s ease 0.1s both" }}>
-            <EditorDemo />
-          </div>
-
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// ─── Features 
-function Features() {
-  const list = [
-    {
-      title: "Named cursors, live",
-      body: "Every person in the room gets a color and a name tag on their cursor. You see exactly where they are and what they're doing as it happens.",
-    },
-    {
-      title: "Run code together",
-      body: "Hit run and the output appears for everyone — not just you. No copy-pasting terminal output into chat. Supported: Python, Java, C, C++, JavaScript.",
-    },
-    {
-      title: "Sub-50ms sync",
-      body: "Edits go over a persistent WebSocket. There's no polling loop, no debounce, no artificial delay. Your keystrokes feel local for both people.",
-    },
-    {
-      title: "Chat inside the editor",
-      body: "A chat panel lives right in the editor window. Flag a bug, ask a question, drop a snippet — without switching to another app.",
-    },
-    {
-      title: "13 languages",
-      body: "Full syntax highlighting in Monaco for Python, TypeScript, Java, C, C++, Go, Rust, Ruby, Haskell, PHP, C#, F#, and JavaScript.",
-    },
-    {
-      title: "Nothing stored",
-      body: "Sessions live in memory. When the last person leaves, the room is gone. Export a ZIP any time. No database, no account, no data trail.",
-    },
-  ];
-
-  return (
-    <section id="features" style={{ padding: "120px 0", borderTop: "1px solid #161616" }}>
-      <div style={{ maxWidth: 1160, margin: "0 auto", padding: "0 32px" }}>
-        <div style={{ marginBottom: 64 }}>
-          <p style={{ fontSize: 12, fontWeight: 600, color: "#444", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 16, fontFamily: "'Geist Mono', monospace" }}>
-            Features
-          </p>
-          <h2 style={{ fontSize: "clamp(30px,4vw,48px)", fontWeight: 800, letterSpacing: "-2px", color: "#ededed", maxWidth: 500, lineHeight: 1.1 }}>
-            Everything a pair-programming session needs.
-          </h2>
-        </div>
-
-        <div className="feat-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 1, border: "1px solid #161616" }}>
-          {list.map((f, i) => (
-            <div
-              key={i}
-              style={{
-                padding: "32px 28px",
-                borderRight: (i + 1) % 3 !== 0 ? "1px solid #161616" : "none",
-                borderBottom: i < 3 ? "1px solid #161616" : "none",
-                background: "#0a0a0a",
-                transition: "background 0.2s",
-              }}
-              onMouseEnter={e => e.currentTarget.style.background = "#0f0f0f"}
-              onMouseLeave={e => e.currentTarget.style.background = "#0a0a0a"}
-            >
-              <div style={{
-                width: 28, height: 28, borderRadius: 6,
-                background: "#161616",
-                border: "1px solid #222",
-                marginBottom: 20,
-                display: "flex", alignItems: "center", justifyContent: "center",
-              }}>
-                <span style={{ color: "#555", fontSize: 13, fontFamily: "'Geist Mono', monospace" }}>{String(i + 1).padStart(2, "0")}</span>
-              </div>
-              <h3 style={{ fontSize: 15, fontWeight: 700, color: "#dedede", marginBottom: 10, letterSpacing: "-0.3px" }}>{f.title}</h3>
-              <p style={{ fontSize: 14, lineHeight: 1.7, color: "#555" }}>{f.body}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// ─── How it works — three honest steps 
-function HowItWorks() {
-  const steps = [
-    { n: "01", title: "Create a room", body: "Click the button. A 6-character code is generated. No form, no email, no wait." },
-    { n: "02", title: "Share the code", body: "Text it, paste it in Slack, say it out loud. Your teammate enters it and lands straight in your editor." },
-    { n: "03", title: "Both of you are in", body: "Their cursor shows up. You're in the same file, the same editor, in real time. Start coding." },
-  ];
-
-  return (
-    <section id="how" style={{ padding: "120px 0", borderTop: "1px solid #161616", background: "#080808" }}>
-      <div style={{ maxWidth: 1160, margin: "0 auto", padding: "0 32px" }}>
-        <div style={{ marginBottom: 64 }}>
-          <p style={{ fontSize: 12, fontWeight: 600, color: "#444", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 16, fontFamily: "'Geist Mono', monospace" }}>
-            How it works
-          </p>
-          <h2 style={{ fontSize: "clamp(30px,4vw,48px)", fontWeight: 800, letterSpacing: "-2px", color: "#ededed", lineHeight: 1.1 }}>
-            Three steps.<br />Fifteen seconds.
-          </h2>
-        </div>
-
-        <div className="mob-stack" style={{ display: "flex", gap: 0, position: "relative" }}>
-          {/* Connecting line */}
-          <div style={{
-            position: "absolute", top: 24, left: 22, right: 22, height: 1,
-            background: "linear-gradient(90deg, #222, #222 33%, transparent 33%, transparent 34%, #222 34%, #222 66%, transparent 66%, transparent 67%, #222 67%)",
-            zIndex: 0,
-          }} className="hide-mob" />
-
-          {steps.map((step, i) => (
-            <div key={i} style={{ flex: 1, padding: "0 24px 0 0", position: "relative", zIndex: 1 }}>
-              <div style={{
-                width: 48, height: 48,
-                borderRadius: 8,
-                background: "#0a0a0a",
-                border: "1px solid #222",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                marginBottom: 24,
-                fontFamily: "'Geist Mono', monospace",
-                fontSize: 13, fontWeight: 600, color: "#555",
-              }}>
-                {step.n}
-              </div>
-              <h3 style={{ fontSize: 18, fontWeight: 700, color: "#dedede", marginBottom: 10, letterSpacing: "-0.4px" }}>
-                {step.title}
-              </h3>
-              <p style={{ fontSize: 14, lineHeight: 1.75, color: "#555" }}>{step.body}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// ─── Testimonial / social proof bar 
-function SocialProof() {
-  const quotes = [
-    { text: "This is exactly the tool I wanted for my CS homework sessions.", author: "— a student", color: "#3b82f6" },
-    { text: "Simpler than anything else I've tried. We were coding together in under a minute.", author: "— a developer", color: "#f97316" },
-    { text: "Love that there's no login. I just send the code and my partner is in.", author: "— a bootcamp student", color: "#a855f7" },
-  ];
-
-  return (
-    <section style={{ padding: "80px 0", borderTop: "1px solid #161616", borderBottom: "1px solid #161616" }}>
-      <div style={{ maxWidth: 1160, margin: "0 auto", padding: "0 32px" }}>
-        <div className="mob-stack" style={{ display: "flex", gap: 48 }}>
-          {quotes.map((q, i) => (
-            <div key={i} style={{ flex: 1 }}>
-              <div style={{ width: 28, height: 2, background: q.color, marginBottom: 20, borderRadius: 1 }} />
-              <p style={{ fontSize: 15, lineHeight: 1.7, color: "#888", marginBottom: 16, fontStyle: "italic" }}>
-                "{q.text}"
-              </p>
-              <p style={{ fontSize: 12, color: "#444", fontFamily: "'Geist Mono', monospace" }}>{q.author}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// ─── FAQ ───
-function FAQ() {
-  const [open, setOpen] = useState(null);
-  const items = [
-    // { q: "Is it free?", a: "Yes. No paid plan, no trial limit, no credit card. Open source under the MIT license." },
-    { q: "Do I need an account?", a: "No. Open the site, create a room, share the code. Nothing stored, no sign-up." },
-    { q: "Which languages can I run?", a: "Execution works for Python, Java, C, C++, and JavaScript. Syntax highlighting covers 13 languages including TypeScript, Go, Rust, Ruby, Haskell, PHP, C#, and F#." },
-    { q: "What happens when everyone leaves?", a: "The session is cleared from memory. Nothing is written to a database. Export a ZIP before closing if you want to keep the files." },
-    { q: "How many people can join?", a: "No enforced limit. Two to six works best for focused sessions. Larger rooms work fine but feel busier." },
-    { q: "Can I self-host it?", a: "Yes. Frontend is React + Vite, backend is Node.js + Express + WebSocket. The source is on GitHub and it's straightforward to deploy on any VPS." },
-  ];
-
-  return (
-    <section id="faq" style={{ padding: "120px 0", borderTop: "1px solid #161616", background: "#080808" }}>
-      <div style={{ maxWidth: 640, margin: "0 auto", padding: "0 32px" }}>
-        <div style={{ marginBottom: 56 }}>
-          <p style={{ fontSize: 12, fontWeight: 600, color: "#444", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 16, fontFamily: "'Geist Mono', monospace" }}>
-            FAQ
-          </p>
-          <h2 style={{ fontSize: "clamp(28px,4vw,44px)", fontWeight: 800, letterSpacing: "-2px", color: "#ededed" }}>
-            Questions
-          </h2>
-        </div>
-
-        {items.map((item, i) => (
-          <div key={i} style={{ borderTop: "1px solid #161616" }}>
-            <button
-              onClick={() => setOpen(open === i ? null : i)}
-              style={{
-                width: "100%", background: "none", border: "none",
-                padding: "20px 0",
-                display: "flex", justifyContent: "space-between", alignItems: "center",
-                cursor: "pointer",
-                color: open === i ? "#ededed" : "#888",
-                fontSize: 15, fontWeight: 500,
-                fontFamily: "'Geist', sans-serif",
-                textAlign: "left", gap: 16,
-                transition: "color 0.15s",
-              }}
-              onMouseEnter={e => e.currentTarget.style.color = "#ededed"}
-              onMouseLeave={e => { if (open !== i) e.currentTarget.style.color = "#888"; }}
-            >
-              <span>{item.q}</span>
-              <span style={{
-                color: "#333", fontSize: 18, lineHeight: 1, flexShrink: 0,
-                transform: open === i ? "rotate(45deg)" : "none",
-                transition: "transform 0.2s", display: "block",
-              }}>+</span>
-            </button>
-            {open === i && (
-              <p style={{ color: "#555", fontSize: 14, lineHeight: 1.8, paddingBottom: 20, animation: "fadeUp 0.15s ease" }}>
-                {item.a}
-              </p>
-            )}
-          </div>
-        ))}
-        <div style={{ borderTop: "1px solid #161616" }} />
-      </div>
-    </section>
-  );
-}
-
-// ─── Final CTA 
-function FinalCTA({ onCreate }) {
-  return (
-    <section style={{ padding: "120px 32px", borderTop: "1px solid #161616", textAlign: "center" }}>
-      <p style={{ fontSize: 12, fontWeight: 600, color: "#444", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 20, fontFamily: "'Geist Mono', monospace" }}>
-        Ready?
+    <div>
+      <h1>
+        {"Code in the same "}
+        <span className="nw">file,<span className="cur h" data-name="Priya" aria-hidden="true" style={{ "--c": "var(--pri)" }} /></span>{" "}
+        <span className="nw">at the</span>{" "}
+        <span className="nw">same time.<span className="cur h" data-name="Kai" aria-hidden="true" style={{ "--c": "var(--kai)" }} /></span>
+      </h1>
+      <p className="sx-p">
+        Make a room, send the six-character code, and you are both typing in the same files. Live cursors, chat and a Run button are built in.
       </p>
-      <h2 style={{ fontSize: "clamp(36px,6vw,72px)", fontWeight: 800, letterSpacing: "-3px", color: "#ededed", marginBottom: 16, lineHeight: 1 }}>
-        Start coding together.
-      </h2>
-      <p style={{ fontSize: 16, color: "#555", marginBottom: 40 }}>
-        No account. No install. Your teammate is one code away.
-      </p>
-      <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-        <button
-          onClick={onCreate}
-          style={{
-            display: "flex", alignItems: "center", gap: 8,
-            padding: "14px 28px",
-            background: "#ededed",
-            border: "none", borderRadius: 8,
-            color: "#0a0a0a",
-            fontSize: 15, fontWeight: 600, cursor: "pointer",
-            transition: "background 0.15s, transform 0.1s",
-          }}
-          onMouseEnter={e => { e.currentTarget.style.background = "#fff"; e.currentTarget.style.transform = "translateY(-1px)"; }}
-          onMouseLeave={e => { e.currentTarget.style.background = "#ededed"; e.currentTarget.style.transform = "translateY(0)"; }}
-        >
-          Create a room <Chevron />
+
+      <div className="sx-act">
+        <button type="button" className="sx-btn" onClick={onCreate}>
+          <Plus /> Create a room
         </button>
-        <a
-          href="https://github.com/user1-prajwal/syncra"
-          target="_blank"
-          rel="noreferrer"
-          style={{
-            display: "flex", alignItems: "center", gap: 8,
-            padding: "14px 22px",
-            background: "transparent",
-            border: "1px solid #222",
-            borderRadius: 8,
-            color: "#888",
-            fontSize: 15, fontWeight: 500,
-            transition: "all 0.15s",
-          }}
-          onMouseEnter={e => { e.currentTarget.style.borderColor = "#444"; e.currentTarget.style.color = "#ededed"; }}
-          onMouseLeave={e => { e.currentTarget.style.borderColor = "#222"; e.currentTarget.style.color = "#888"; }}
-        >
-          <Github size={14} /> View source
-        </a>
+        <div className="sx-or">or join with a code</div>
+        <form className="sx-join" onSubmit={onJoin} noValidate>
+          <input
+            value={code}
+            onChange={onChange}
+            placeholder="Enter room code"
+            aria-label="Room code"
+            aria-invalid={!!err}
+            aria-describedby={err ? "sx-err" : undefined}
+            autoComplete="off"
+            autoCapitalize="characters"
+            enterKeyHint="go"
+            spellCheck={false}
+          />
+          <button type="submit">Join</button>
+        </form>
+        {err && <p id="sx-err" className="sx-err" role="alert">{err}</p>}
+        <p className="sx-note">No account, no install. A pasted room link works too.</p>
       </div>
-    </section>
+    </div>
   );
 }
 
-// ─── Footer 
-function Footer({ onCreate }) {
+function StatusBar() {
   return (
-    <footer style={{ borderTop: "1px solid #161616", padding: "40px 32px 32px" }}>
-      <div style={{ maxWidth: 1160, margin: "0 auto" }}>
-        <div className="footer-grid" style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: 40, marginBottom: 40 }}>
-          <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-              <img src="/syncra-logo-dark.svg" alt="Syncra" style={{ height: 25 }} onError={e => e.target.style.display='none'} />
-              {/* <span style={{ fontSize: 15, fontWeight: 700, letterSpacing: "-0.5px", color: "#ededed" }}>Syncra</span> */}
-            </div>
-            <p style={{ color: "#333", fontSize: 13, lineHeight: 1.7, maxWidth: 200 }}>
-              Real-time collaborative code editor. Free and open source.
-            </p>
-          </div>
-
-          {[
-            { title: "Product", items: [["Create room", null, onCreate],["GitHub","https://github.com/user1-prajwal/syncra"],["Report bug","https://github.com/user1-prajwal/syncra/issues"]] },
-            { title: "Features", items: [["Live cursors",null],["Code execution",null],["Built-in chat",null],["13 languages",null],["Import & Export",null]] },
-            { title: "Languages", items: [["Python · C · C++",null],["Java · Go · Rust",null],["TypeScript · JS",null],["Ruby · Haskell",null],["PHP · C# · F#",null]] },
-          ].map(col => (
-            <div key={col.title}>
-              <h4 style={{ fontSize: 12, fontWeight: 600, color: "#555", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 14, fontFamily: "'Geist Mono',monospace" }}>
-                {col.title}
-              </h4>
-              {col.items.map(([label, href, fn]) => fn ? (
-                <button key={label} onClick={fn} style={{ display: "block", background: "none", border: "none", color: "#333", fontSize: 13, cursor: "pointer", padding: "0 0 8px", fontFamily: "'Geist',sans-serif", transition: "color 0.15s", textAlign: "left" }}
-                  onMouseEnter={e => e.currentTarget.style.color = "#ededed"}
-                  onMouseLeave={e => e.currentTarget.style.color = "#333"}
-                >{label}</button>
-              ) : href ? (
-                <a key={label} href={href} target="_blank" rel="noreferrer" style={{ display: "block", color: "#333", fontSize: 13, marginBottom: 8, transition: "color 0.15s" }}
-                  onMouseEnter={e => e.currentTarget.style.color = "#ededed"}
-                  onMouseLeave={e => e.currentTarget.style.color = "#333"}
-                >{label}</a>
-              ) : (
-                <div key={label} style={{ color: "#2a2a2a", fontSize: 13, marginBottom: 8 }}>{label}</div>
-              ))}
-            </div>
-          ))}
-        </div>
-
-        <div style={{ borderTop: "1px solid #161616", paddingTop: 24, display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
-          <span style={{ color: "#2a2a2a", fontSize: 12 }}>© 2025 Syncra · MIT License · No data stored · Free forever</span>
-          <span style={{ color: "#2a2a2a", fontSize: 12 }}>React + WebSocket + Monaco Editor</span>
-        </div>
-      </div>
+    <footer className="sx-s">
+      <span>Rooms close 10 minutes after the last person leaves</span>
+      <span>13 languages. JavaScript runs in your browser, the rest through a hosted compiler</span>
+      <span>Up to 50 people per room</span>
+      <a href={GITHUB} target="_blank" rel="noreferrer">Open source on GitHub</a>
     </footer>
   );
 }
 
-// ─── Root ──
 export default function Landing() {
   const navigate = useNavigate();
-
-  useEffect(() => { injectGlobal(); }, []);
+  useStyles();
 
   function createRoom() {
-    const id = Math.random().toString(36).substring(2, 8).toUpperCase();
-    navigate(`/room/${id}`);
+    navigate(`/room/${newRoomCode()}`);
   }
 
   return (
-    <div style={{ background: "#0a0a0a", color: "#ededed", minHeight: "100vh", fontFamily: "'Geist', -apple-system, sans-serif" }}>
-      <Navbar onCreate={createRoom} />
-      <Hero onCreate={createRoom} />
-      <Marquee />
-      <Features />
-      <HowItWorks />
-      <SocialProof />
-      <FAQ />
-      <FinalCTA onCreate={createRoom} />
-      <Footer onCreate={createRoom} />
+    <div className="sx">
+      <Header />
+      <main className="sx-m">
+        <Hero onCreate={createRoom} />
+        <EditorPreview />
+      </main>
+      <StatusBar />
     </div>
   );
 }
