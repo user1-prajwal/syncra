@@ -561,7 +561,11 @@ function EditorPage() {
       try {
         let result=""; const orig=console.log;
         console.log=(...a)=>{result+=a.join(" ")+"\n";};
-        new Function(activeFile.code)(); console.log=orig;
+         try {
+            new Function(activeFile.code)();
+          } finally {
+            console.log = orig;
+          }
         setOutput(result||"✅ Ran successfully (no output)");
       } catch(err){setOutput("❌ Error: "+err.message);}
       setIsRunning(false); return;
