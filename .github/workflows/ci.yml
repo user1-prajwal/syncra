@@ -56,6 +56,12 @@ jobs:
           npm ci --prefix collab-backend
           npm ci --prefix collab-editor-frontend
           npm ci --prefix e2e
+      - name: Check frontend and browser tests are from the same version
+        run: |
+          grep -q "data-collab-bound" collab-editor-frontend/src/collab/yjsSync.js || {
+            echo "::error::collab-editor-frontend/src/collab/yjsSync.js is older than e2e/harness.mjs (missing data-collab-bound). Commit and push both files."
+            exit 1
+          }
       - name: Run browser tests
         run: npm test --prefix e2e
       - name: Upload screenshots and diagnostics

@@ -99,6 +99,21 @@ export function e2eTest(name, fn, { timeout = 60000 } = {}) {
 const BACKEND_PORT = Number(process.env.E2E_BACKEND_PORT || 4455)
 const FRONTEND_PORT = Number(process.env.E2E_FRONTEND_PORT || 4466)
 
+// The tests wait for `data-collab-bound`, which the app's Yjs binding sets (collab-editor-frontend/src/collab/yjsSync.js).
+// If the frontend was built from an OLDER yjsSync.js than this harness, every test would otherwise wait 30 s and fail
+// with a confusing message. Check the freshly built bundle and fail immediately with the real reason.
+function assertFrontendHasReadinessMarker() {
+  const assets = path.join(frontendDir, 'dist', 'assets')
+  const found = fs.existsSync(assets) && fs.readdirSync(assets).filter((f) => f.endsWith('.js')).some((f) => fs.readFileSync(path.join(assets, f), 'utf8').includes('data-collab-bound'))
+  if (!found) {
+    throw new Error(
+      'The built frontend does not contain "data-collab-bound", so the browser tests cannot tell when the editor is ready.\n' +
+        '  -> collab-editor-frontend/src/collab/yjsSync.js in this commit is older than e2e/harness.mjs.\n' +
+        '  -> Make sure BOTH files are committed and pushed (git status; git add collab-editor-frontend/src/collab/yjsSync.js).',
+    )
+  }
+}
+
 export async function startStack(backendOptions = {}) {
   // The backend URL is baked into the frontend bundle at build time.
   execFileSync(process.execPath, [path.join(frontendDir, 'node_modules', 'vite', 'bin', 'vite.js'), 'build', '--logLevel', 'error'], {
@@ -106,6 +121,7 @@ export async function startStack(backendOptions = {}) {
     env: { ...process.env, VITE_BACKEND_URL: `http://localhost:${BACKEND_PORT}` },
     stdio: 'inherit',
   })
+  assertFrontendHasReadinessMarker()
   const collab = createCollabServer({ heartbeatMs: 60000, ...backendOptions })
   await collab.listen(BACKEND_PORT)
   const preview = spawn(
@@ -206,7 +222,7 @@ const PICK_EDITOR = `(() => {
 const HAS_BOUND_EDITOR = `window.monaco.editor.getEditors().some((e) => { const d = e.getContainerDomNode(); return d.dataset.collabBound === 'true' && !d.dataset.stale })`
 
 export const waitForBoundEditor = (page, ms = 15000) =>
-  waitUntil(() => page.evaluate(HAS_BOUND_EDITOR), ms, 'the editor to be connected to the shared document')
+  waitUntil(() => page.evaluate(HAS_BOUND_EDITOR), ms, 'the editor to be connected to the shared document (data-collab-bound never appeared: is yjsSync.js up to date, or did the Yjs binding fail to start?)')
 
 const markEditorsStale = (page) =>
   page.evaluate(() => window.monaco.editor.getEditors().forEach((e) => e.getContainerDomNode().setAttribute('data-stale', '1')))
