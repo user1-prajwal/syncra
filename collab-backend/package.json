@@ -7,7 +7,8 @@
     "start": "node server.js",
     "test": "jest --runInBand",
     "bench": "node bench/latency.js",
-    "dev": "node --env-file=.env server.js"
+    "dev": "node --env-file=.env server.js",
+    "check:exec": "node --env-file=.env scripts/check-execution.js"
   },
   "keywords": [],
   "author": "",
