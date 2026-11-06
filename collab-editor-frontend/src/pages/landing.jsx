@@ -2,8 +2,10 @@ import { useEffect, useLayoutEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 const GITHUB = "https://github.com/user1-prajwal/syncra";
-// No 0/O/1/I so a code is easy to read out loud. 32 symbols divide 256 evenly, so every symbol is equally likely.
+
+// No 0/O/1/I so a code is easy to read out loud. 32 symbols divide 256 evenly, so `b % 32` has no modulo bias.
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const ROOM_CODE = /^[A-Z0-9]{6}$/;
 
 function newRoomCode() {
   const bytes = new Uint8Array(6);
@@ -11,8 +13,23 @@ function newRoomCode() {
   return Array.from(bytes, (b) => ALPHABET[b % 32]).join("");
 }
 
+// What the join field should show for whatever was typed or pasted.
+// - A pasted room link shows the id taken from it, untouched. If that id is not a valid code, Join rejects it,
+//   instead of the field quietly "cleaning" it into a different room.
+// - Anything else that looks like a URL is kept as-is so Join can reject it (it used to be cut down to six
+//   unrelated letters, e.g. "HTTPSS").
+// - Typed or dictated codes drop spaces and dashes and stop at six characters.
+function readRoomField(raw) {
+  const link = raw.match(/\/room\/([^/?#\s]+)/i);
+  if (link) return link[1].toUpperCase().slice(0, 32);
+  if (/[/:.]/.test(raw)) return raw.trim().slice(0, 32);
+  return raw.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
+}
+
+// ─── Styles ───────────────────────────────────────────────────────
+
 // Shared base rules, same id and contents as the previous landing page (minus its landing-only parts),
-// left in place because other pages may rely on them.
+// left in place because other pages may rely on them. Better home: the app's global stylesheet.
 const GLOBAL_CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800;900&family=Geist+Mono:wght@400;500;600&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -28,101 +45,112 @@ a{text-decoration:none;color:inherit}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 `;
 
-// Everything below is scoped to .sx and removed when the page unmounts.
+// Everything below is scoped to .sx and is rendered inside the page, so it is removed when the page unmounts.
+// Colour carries meaning here: the page is neutral, and the only hues are the people in the editor.
 const CSS = `
-.sx{--bg:#0a1020;--panel:#0f1730;--win:#0c1329;--line:#1d2847;--tx:#eaeef8;--mu:#93a0bd;--dim:#7685a8;--paper:#f3efe4;
-  --you:#6ea8ff;--pri:#ff8a5b;--kai:#b58cff;
-  position:relative;min-height:100vh;min-height:100dvh;display:grid;grid-template-rows:auto 1fr auto;
-  background:var(--bg);color:var(--tx);font-family:'Geist',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;overflow-x:hidden;overflow-x:clip}
-.sx::before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(55% 55% at 72% 48%,rgba(110,168,255,.08),transparent 72%)}
-.sx>*{position:relative}
-.sx :focus-visible{outline:2px solid var(--you);outline-offset:3px}
-body:has(.sx){background:#0a1020}
+.sx{--paper:#f4f5f4;--card:#fafbfa;--ink:#1d2321;--mu:#566059;--dim:#66706a;--line:#d9dcd9;--line2:#c5c9c5;
+  --ed:#181b1a;--ed2:#1f2322;--edl:#2b302e;--edt:#d6dad7;--edm:#8a928e;--edg:#4a514e;
+  --you:#e4e8e5;--pri:#e9a23b;--kai:#55c28a;
+  --gx:clamp(20px,4vw,40px);
+  min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;background:var(--paper);color:var(--ink);
+  font:400 16px/1.5 'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden;overflow-x:clip}
+.sx,.sx *,.sx *::before,.sx *::after{box-sizing:border-box}
+.sx :where(h1,p,form,input,button,label){margin:0}
+.sx :focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+body:has(.sx){background:#f4f5f4}
+html:has(.sx)::-webkit-scrollbar-track{background:#f4f5f4}
+html:has(.sx)::-webkit-scrollbar-thumb{background:#c5c9c5}
 
-.sx-h{display:flex;align-items:center;justify-content:space-between;height:64px;padding:0 clamp(20px,4vw,40px)}
-.sx-h img{display:block;height:28px;width:auto}
-.sx-wm{font-weight:700;font-size:18px;letter-spacing:-.02em}
-.sx-gh{display:flex;align-items:center;gap:7px;padding:6px 2px;color:var(--mu);font-size:14px;font-weight:500;transition:color .15s}
-.sx-gh:hover{color:var(--tx)}
+.sx-h{display:flex;align-items:center;justify-content:space-between;height:56px;padding:0 var(--gx)}
+.sx-wm{font-weight:600;font-size:18px;letter-spacing:-.015em}
+.sx-gh{display:flex;align-items:center;gap:7px;padding:6px 0;color:var(--mu);font-size:14px;transition:color .12s}
+.sx-gh:hover{color:var(--ink);text-decoration:underline;text-underline-offset:3px}
 
-.sx-m{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:clamp(32px,5vw,72px);align-items:center;
-  width:100%;max-width:1280px;margin:0 auto;padding:16px clamp(20px,4vw,40px) 24px}
-.sx h1{font-size:clamp(36px,3.9vw,54px);line-height:1.06;letter-spacing:-.035em;font-weight:600;text-wrap:balance;margin-bottom:22px}
-.sx .nw{white-space:nowrap}
-.sx-p{font-size:17px;line-height:1.65;color:var(--mu);max-width:44ch;margin-bottom:28px;text-wrap:pretty}
+.sx-m{flex:1;display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:clamp(32px,5vw,72px);align-items:center;
+  width:100%;max-width:1320px;margin:0 auto;padding:16px var(--gx) 28px}
+.sx h1{font-weight:600;font-size:clamp(32px,3.1vw,44px);line-height:1.1;letter-spacing:-.028em;text-wrap:balance;margin-bottom:18px}
+.sx-p{font-size:17px;line-height:1.6;color:var(--mu);max-width:46ch;margin-bottom:28px;text-wrap:pretty}
 
-.sx-act{display:grid;gap:14px;max-width:400px}
-.sx-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:50px;border:0;border-radius:10px;
-  background:var(--paper);color:#0a1020;font:600 15px 'Geist',sans-serif;cursor:pointer;transition:transform .12s,background .15s}
-.sx-btn:hover{background:#fff;transform:translateY(-1px)}
-.sx-btn:active{transform:none}
-.sx-or{display:flex;align-items:center;gap:12px;font-size:13px;color:var(--dim)}
-.sx-or::before,.sx-or::after{content:"";flex:1;height:1px;background:var(--line)}
-.sx-join{display:flex;border:1px solid var(--line);border-radius:10px;background:var(--panel);transition:border-color .15s}
-.sx-join:focus-within{border-color:var(--you);box-shadow:0 0 0 1px var(--you)}
-.sx-join input{flex:1;min-width:0;height:48px;padding:0 16px;background:none;border:0;border-radius:10px 0 0 10px;color:var(--tx);
-  font:500 16px 'Geist Mono',ui-monospace,monospace;letter-spacing:.22em;text-transform:uppercase}
-.sx-join input:focus-visible{outline:none}
-.sx-join input::placeholder{color:var(--dim);font:400 15px 'Geist',sans-serif;letter-spacing:0;text-transform:none}
-.sx-join button{padding:0 22px;border:0;border-left:1px solid var(--line);border-radius:0 9px 9px 0;background:none;color:var(--tx);
-  font:600 14px 'Geist',sans-serif;cursor:pointer;transition:background .15s}
-.sx-join button:hover{background:rgba(255,255,255,.05)}
-.sx-join button:focus-visible{outline-offset:-3px}
-.sx-err{font-size:13px;color:#ff9a9a}
-.sx-note{font-size:14px;color:var(--dim)}
+.sx-btn{height:46px;padding:0 22px;border:0;border-radius:6px;background:var(--ink);color:var(--paper);
+  font:500 15px 'IBM Plex Sans',sans-serif;cursor:pointer;transition:background-color .12s}
+.sx-btn:hover{background:#353d3a}
+.sx-btn:active{background:#000}
+.sx-sub{margin-top:10px;font-size:13px;color:var(--dim)}
 
-/* collaborator cursors, used in the headline and in the editor preview */
+.sx-jn{max-width:400px;margin-top:26px;padding-top:22px;border-top:1px solid var(--line)}
+.sx-jn label{display:block;margin-bottom:8px;font-size:13px;font-weight:500;color:var(--mu)}
+.sx-f{display:flex;height:44px;border:1px solid var(--line2);border-radius:6px;background:var(--card);transition:border-color .12s}
+.sx-f:focus-within{border-color:var(--ink);box-shadow:0 0 0 1px var(--ink)}
+.sx-f input{flex:1;min-width:0;padding:0 14px;border:0;border-radius:6px 0 0 6px;background:none;color:var(--ink);
+  font:500 16px 'IBM Plex Mono',ui-monospace,monospace;letter-spacing:.14em;text-transform:uppercase}
+.sx-f input:focus-visible{outline:none}
+.sx-f input::placeholder{color:var(--dim);font-weight:400}
+.sx-f button{padding:0 20px;border:0;border-left:1px solid var(--line2);border-radius:0 5px 5px 0;background:none;color:var(--ink);
+  font:500 14px 'IBM Plex Sans',sans-serif;cursor:pointer;transition:background-color .12s}
+.sx-f button:hover{background:rgba(29,35,33,.06)}
+.sx-f button:focus-visible{outline-offset:-4px}
+.sx-err{min-height:20px;margin-top:8px;font-size:13px;line-height:20px;color:#a8321f}
+
+/* collaborator cursors */
 .sx .cur{position:absolute;width:2px;height:22px}
 .sx .cur::after{content:"";position:absolute;inset:0;background:var(--c);animation:sx-blink 1.1s steps(1) infinite}
-.sx .cur[data-name]::before{content:attr(data-name);position:absolute;left:0;bottom:100%;padding:0 6px;font:600 11px/17px 'Geist',sans-serif;letter-spacing:0;white-space:nowrap;
-  background:var(--c);color:#0a1020;border-radius:4px 4px 4px 0}
-.sx .cur.h{position:relative;display:inline-block;width:3px;height:.84em;margin:0 3px;vertical-align:-.04em}
+.sx .cur[data-name]::before{content:attr(data-name);position:absolute;left:0;bottom:100%;padding:0 6px;
+  font:600 10.5px/17px 'IBM Plex Sans',sans-serif;white-space:nowrap;background:var(--c);color:#121514;border-radius:3px 3px 3px 0}
 @keyframes sx-blink{50%{opacity:0}}
 
-.sx-pv{container-type:inline-size}
-.sx-w{border:1px solid var(--line);border-radius:12px;background:var(--win);overflow:hidden;min-width:0;
-  font:13px/22px 'Geist Mono',ui-monospace,monospace;font-size:min(13px,calc((100cqw - 68px)/24.4));text-rendering:geometricPrecision;box-shadow:0 40px 80px -24px rgba(0,0,0,.7)}
-.sx-w .bar{display:flex;align-items:center;justify-content:space-between;gap:12px;height:42px;padding-right:12px;background:var(--panel);border-bottom:1px solid var(--line)}
-.sx-w .tabs{display:flex;height:100%}
-.sx-w .tab{display:flex;align-items:center;padding:0 16px;border-right:1px solid var(--line);color:var(--dim);font-size:12px}
-.sx-w .tab.on{color:var(--tx);background:var(--win);box-shadow:inset 0 -2px 0 var(--you)}
-.sx-w .who{display:flex;align-items:center;gap:12px;color:var(--dim);font-size:11px}
-.sx-w .avs{display:flex;padding-left:6px}
-.sx-w .av{display:grid;place-items:center;width:22px;height:22px;margin-left:-6px;border-radius:50%;border:2px solid var(--panel);
-  background:var(--c);color:#0a1020;font:700 10px/1 'Geist',sans-serif;font-style:normal}
-.sx-w .runb{display:flex;align-items:center;gap:6px;padding:3px 10px;border:1px solid var(--line);border-radius:6px;color:var(--tx);font:500 11px/18px 'Geist',sans-serif}
-.sx-w .code{position:relative;display:flex;padding:16px 0;min-height:204px}
-.sx-w .gut{flex:none;width:44px;padding-right:14px;text-align:right;color:#35415f;font-size:12px;user-select:none}
+/* editor preview */
+.sx-pv{container-type:inline-size;min-width:0}
+.sx-w{border:1px solid #0d0f0e;border-radius:8px;background:var(--ed);color:var(--edt);overflow:hidden;
+  font:400 13px/22px 'IBM Plex Mono',ui-monospace,monospace;font-size:min(13px,calc((100cqw - 72px)/23.5))}
+.sx-w .bar{display:flex;align-items:stretch;justify-content:space-between;height:40px;background:var(--ed2);border-bottom:1px solid var(--edl)}
+.sx-w .tabs{display:flex}
+.sx-w .tab{display:flex;align-items:center;padding:0 16px;border-right:1px solid var(--edl);color:var(--edm);font:400 12px 'IBM Plex Sans',sans-serif}
+.sx-w .tab.on{background:var(--ed);color:var(--edt);box-shadow:inset 0 1px 0 var(--edm)}
+.sx-w .who{display:flex;align-items:center;gap:14px;padding-right:10px;color:var(--edm);font:400 11px 'IBM Plex Mono',ui-monospace,monospace;letter-spacing:.06em}
+.sx-w .avs{display:flex;padding-left:5px}
+.sx-w .av{display:grid;place-items:center;width:22px;height:22px;margin-left:-5px;border:2px solid var(--ed2);border-radius:50%;
+  background:var(--c);color:#121514;font:600 9px/1 'IBM Plex Sans',sans-serif;font-style:normal}
+.sx-w .runb{display:flex;align-items:center;gap:6px;height:24px;padding:0 10px;border:1px solid #444a47;border-radius:5px;color:var(--edt);
+  font:500 12px 'IBM Plex Sans',sans-serif;letter-spacing:0}
+.sx-w .body{display:flex}
+.sx-w .ed{flex:1;min-width:0;position:relative;display:flex;padding:20px 0 16px}
+.sx-w .gut{flex:none;width:44px;padding-right:14px;text-align:right;color:var(--edg);user-select:none}
 .sx-w .lines{position:relative;flex:1;min-width:0;margin-left:16px;white-space:pre}
 .sx-w .ln{height:22px}
-.sx-w .sel{position:absolute;height:22px;border-radius:2px;background:rgba(181,140,255,.24)}
-.sx-w .t-k{color:#c4a7ff}.sx-w .t-f{color:#7cc4ff}.sx-w .t-b{color:#ffd479}.sx-w .t-s{color:#a5e08a}.sx-w .t-n{color:#ffb86b}.sx-w .t-c{color:#7685a8;font-style:italic}
-.sx-w .chat{position:absolute;top:12px;right:12px;width:176px;display:grid;gap:6px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;
-  background:rgba(15,23,48,.96);box-shadow:0 12px 30px rgba(0,0,0,.45);font:12px/1.45 'Geist',sans-serif;color:var(--mu)}
-.sx-w .chat b{margin-right:6px;font-weight:600;color:var(--c)}
-.sx-w .out{display:flex;align-items:baseline;gap:12px;padding:10px 16px;border-top:1px solid var(--line);background:#080d1c;font-size:12px}
-.sx-w .out span{color:var(--dim);font:500 12px 'Geist',sans-serif}
-.sx-w .out code{color:#a5e08a;font:inherit}
+.sx-w .sel{position:absolute;height:22px;border-radius:2px;background:rgba(85,194,138,.26)}
+.sx-w .t-k{color:#c98b9b}.sx-w .t-f{color:#86aec7}.sx-w .t-b{color:#c9ab7e}.sx-w .t-s{color:#9fb88a}.sx-w .t-n{color:#c9ab7e}.sx-w .t-c{color:#6b7077;font-style:italic}
+.sx-w .chat{flex:none;display:flex;flex-direction:column;width:208px;border-left:1px solid var(--edl);font:400 12px/1.45 'IBM Plex Sans',sans-serif}
+.sx-w .chat h2{padding:10px 14px;border-bottom:1px solid var(--edl);color:var(--edm);font:500 11px/1.4 'IBM Plex Sans',sans-serif}
+.sx-w .msgs{flex:1;display:grid;align-content:start;gap:12px;padding:14px}
+.sx-w .msgs b{display:block;font-weight:600;font-size:11px;color:var(--c)}
+.sx-w .msgs span{color:var(--edt)}
+.sx-w .mi{margin:0 10px 10px;padding:7px 10px;border:1px solid var(--edl);border-radius:5px;color:var(--edm)}
+.sx-w .out{padding:10px 16px 12px;border-top:1px solid var(--edl);background:#141716}
+.sx-w .out span{display:block;margin-bottom:2px;color:var(--edm);font:500 11px/1.5 'IBM Plex Sans',sans-serif}
+.sx-w .out code{display:block;color:#9fb88a;font:inherit;font-size:12px}
 
-.sx-s{display:flex;flex-wrap:wrap;align-items:center;gap:6px 28px;padding:13px clamp(20px,4vw,40px);border-top:1px solid var(--line);
-  background:rgba(8,13,28,.8);font-size:12.5px;color:var(--dim)}
-.sx-s a{margin-left:auto;color:var(--mu);transition:color .15s}
-.sx-s a:hover{color:var(--tx)}
+.sx-ft{display:flex;flex-wrap:wrap;gap:4px 32px;padding:14px var(--gx);border-top:1px solid var(--line);font-size:12.5px;color:var(--dim)}
 
-@media(max-width:960px){
-  .sx-m{grid-template-columns:minmax(0,1fr);gap:36px;padding-top:8px}
-  .sx h1{font-size:clamp(36px,6.2vw,54px)}
-  .sx-pv{max-width:720px}
-  .sx-s a{margin-left:0}
-}
-@container (max-width:540px){.sx-w .chat{display:none}}
+@container (max-width:639px){.sx-w .chat{display:none}}
 @container (max-width:430px){.sx-w .tab:nth-child(2),.sx-w .rm{display:none}}
+@media(max-width:980px){
+  .sx-m{grid-template-columns:minmax(0,1fr);gap:40px;align-items:start;padding-top:12px;padding-bottom:36px}
+  .sx-pv{max-width:720px}
+}
+@media(max-width:480px){
+  .sx h1{font-size:clamp(30px,8vw,36px)}
+  .sx-btn{width:100%}
+  .sx-jn{max-width:none}
+}
 @media(prefers-reduced-motion:reduce){
   .sx *,.sx *::before,.sx *::after{animation:none!important;transition:none!important}
 }
 `;
 
-function useStyles() {
+const FONTS =
+  "https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap";
+
+function useGlobalStyles() {
   useLayoutEffect(() => {
     if (!document.getElementById("s-css")) {
       const g = document.createElement("style");
@@ -130,30 +158,34 @@ function useStyles() {
       g.textContent = GLOBAL_CSS;
       document.head.appendChild(g);
     }
-    const el = document.createElement("style");
-    el.textContent = CSS;
-    document.head.appendChild(el);
-    return () => el.remove();
   }, []);
 }
 
-const Github = () => (
+// A <link> loads fonts without blocking rendering the way an @import inside injected CSS does.
+// Ideally this lives in index.html, so the request starts before React runs.
+function useFonts() {
+  useEffect(() => {
+    if (document.querySelector("link[data-sx-fonts]")) return;
+    const pre = document.createElement("link");
+    pre.rel = "preconnect";
+    pre.href = "https://fonts.gstatic.com";
+    pre.crossOrigin = "";
+    const css = document.createElement("link");
+    css.rel = "stylesheet";
+    css.href = FONTS;
+    css.dataset.sxFonts = "";
+    document.head.append(pre, css);
+  }, []);
+}
+
+const GitHubMark = () => (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
     <path d="M12 .5C5.73.5.5 5.74.5 12.02c0 5.1 3.29 9.4 7.86 10.94.57.1.79-.25.79-.55v-2.1c-3.2.7-3.87-1.36-3.87-1.36-.53-1.32-1.29-1.67-1.29-1.67-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.2 1.77 1.2 1.03 1.76 2.7 1.25 3.36.96.1-.75.4-1.25.73-1.53-2.55-.29-5.23-1.28-5.23-5.7 0-1.26.45-2.29 1.18-3.09-.12-.29-.51-1.46.11-3.04 0 0 .97-.31 3.18 1.18a11.05 11.05 0 0 1 5.8 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.58.24 2.75.12 3.04.74.8 1.18 1.83 1.18 3.09 0 4.43-2.69 5.41-5.25 5.69.42.36.78 1.07.78 2.16v3.2c0 .31.21.65.8.55A10.99 10.99 0 0 0 23.5 12C23.5 5.74 18.27.5 12 .5z" />
   </svg>
 );
-const Plus = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
-    <path d="M12 5v14M5 12h14" />
-  </svg>
-);
-const Play = () => (
-  <svg width="9" height="9" viewBox="0 0 10 10" aria-hidden="true">
-    <path d="M1.5 0.8v8.4L9 5z" fill="#a5e08a" />
-  </svg>
-);
 
 // ─── Editor preview ───────────────────────────────────────────────
+// An illustration of a room. It only shows things the app does: file tabs, live cursors, chat, Run and its output.
 
 const LH = 22; // line height in px, matches CSS
 const PEOPLE = [
@@ -161,18 +193,26 @@ const PEOPLE = [
   { n: "Priya", c: "var(--pri)" },
   { n: "Kai", c: "var(--kai)" },
 ];
+const CHAT = [
+  { who: "Kai", c: "var(--kai)", text: "Can you handle punctuation too?" },
+  { who: "Priya", c: "var(--pri)", text: "Yes, adding it below." },
+  { who: "You", c: "var(--you)", text: "Running it now." },
+];
+const TYPED_ROW = 8; // Priya types here; the blank rows above keep her name label off the code
+const TYPED = "# next: strip punctuation";
 const CODE = [
   "from collections import Counter",
+  "",
   "",
   "def top_words(text, k=3):",
   "    words = text.lower().split()",
   "    return Counter(words).most_common(k)",
   "",
-  "", // row 6: Priya types here, under a blank row so her label hides no code
+  "",
+  "",
+  "",
   'print(top_words("to be or not to be"))',
 ];
-const TYPED = "# next: strip punctuation";
-const TYPED_ROW = 6;
 
 const KEYWORDS = /^(from|import|def|return)$/;
 function highlight(src) {
@@ -198,22 +238,21 @@ function highlight(src) {
 const reducedMotion = () =>
   typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
-// Types the text, holds, backspaces quickly, pauses, repeats.
-function useTyping(text) {
+// Types the text once, then stops. With reduced motion the finished text is shown straight away.
+function useTypeOnce(text, delay = 1200) {
   const [n, setN] = useState(() => (reducedMotion() ? text.length : 0));
   useEffect(() => {
     if (reducedMotion()) return;
-    const L = text.length;
-    const cycle = L + 60;
-    let s = 0;
-    const id = setInterval(() => {
-      s = (s + 1) % cycle;
-      if (s < L) setN(s);
-      else if (s < L + 40) setN(L);
-      else setN(Math.max(0, Math.round(L * (1 - (s - L - 40) / 10))));
-    }, 70);
-    return () => clearInterval(id);
-  }, [text]);
+    let i = 0;
+    let id;
+    const tick = () => {
+      i += 1;
+      setN(i);
+      if (i < text.length) id = setTimeout(tick, text[i] === " " ? 110 : 60);
+    };
+    id = setTimeout(tick, delay);
+    return () => clearTimeout(id);
+  }, [text, delay]);
   return n;
 }
 
@@ -222,12 +261,12 @@ function Cur({ row, col, color, name }) {
 }
 
 function EditorPreview() {
-  const typed = useTyping(TYPED);
+  const typed = useTypeOnce(TYPED);
   return (
     <div
       className="sx-pv"
       role="img"
-      aria-label="Preview of a Syncra room: three people editing main.py together, with live cursors, chat and a Run button"
+      aria-label="Illustration of a Syncra room: main.py open with live cursors from two collaborators, a chat panel, a Run button and its output"
     >
       <div className="sx-w">
         <div className="bar">
@@ -242,26 +281,36 @@ function EditorPreview() {
                 <i key={p.n} className="av" style={{ "--c": p.c }}>{p.n[0]}</i>
               ))}
             </span>
-            <span className="runb"><Play /> Run</span>
+            <span className="runb">
+              <svg width="9" height="9" viewBox="0 0 10 10" aria-hidden="true"><path d="M1.5 .8v8.4L9 5z" fill="currentColor" /></svg>
+              Run
+            </span>
           </div>
         </div>
 
-        <div className="code">
-          <div className="gut">
-            {CODE.map((_, i) => <div key={i} className="ln">{i + 1}</div>)}
-          </div>
-          <div className="lines">
-            {CODE.map((line, i) => (
-              <div key={i} className="ln">{highlight(i === TYPED_ROW ? TYPED.slice(0, typed) : line)}</div>
-            ))}
-            <span className="sel" style={{ top: 0, left: "24ch", width: "7ch" }} />
-            <Cur row={0} col={31} color="var(--kai)" name="Kai" />
-            <Cur row={TYPED_ROW} col={typed} color="var(--pri)" name="Priya" />
-            <Cur row={7} col={38} color="var(--you)" />
+        <div className="body">
+          <div className="ed">
+            <div className="gut">
+              {CODE.map((_, i) => <div key={i} className="ln">{i + 1}</div>)}
+            </div>
+            <div className="lines">
+              {CODE.map((line, i) => (
+                <div key={i} className="ln">{highlight(i === TYPED_ROW ? TYPED.slice(0, typed) : line)}</div>
+              ))}
+              <span className="sel" style={{ top: 0, left: "24ch", width: "7ch" }} />
+              <Cur row={0} col={31} color="var(--kai)" name="Kai" />
+              <Cur row={TYPED_ROW} col={typed} color="var(--pri)" name="Priya" />
+              <Cur row={10} col={38} color="var(--you)" />
+            </div>
           </div>
           <div className="chat">
-            <p><b style={{ "--c": "var(--kai)" }}>Kai</b>can you take the tests?</p>
-            <p><b style={{ "--c": "var(--pri)" }}>Priya</b>on it</p>
+            <h2>Chat</h2>
+            <div className="msgs">
+              {CHAT.map((m) => (
+                <p key={m.who} style={{ "--c": m.c }}><b>{m.who}</b><span>{m.text}</span></p>
+              ))}
+            </div>
+            <div className="mi">Message</div>
           </div>
         </div>
 
@@ -277,16 +326,12 @@ function EditorPreview() {
 // ─── Page ─────────────────────────────────────────────────────────
 
 function Header() {
-  const [logo, setLogo] = useState(true);
   return (
     <header className="sx-h">
-      {logo ? (
-        <img src="/syncra-logo-dark.svg" alt="Syncra" onError={() => setLogo(false)} />
-      ) : (
-        <span className="sx-wm">Syncra</span>
-      )}
+      {/* Text wordmark: the existing /syncra-logo-dark.svg is made for dark backgrounds. */}
+      <span className="sx-wm">Syncra</span>
       <a className="sx-gh" href={GITHUB} target="_blank" rel="noreferrer">
-        <Github /> GitHub
+        <GitHubMark /> GitHub
       </a>
     </header>
   );
@@ -294,80 +339,75 @@ function Header() {
 
 function Hero({ onCreate }) {
   const navigate = useNavigate();
-  const [code, setCode] = useState("");
+  const [value, setValue] = useState("");
   const [err, setErr] = useState("");
 
   function onChange(e) {
-    const v = e.target.value;
-    const link = v.match(/\/room\/([A-Za-z0-9_-]+)/); // a pasted room link works too
-    const clean = (link ? link[1] : v).toUpperCase().replace(/[^A-Z0-9]/g, "");
-    // Typed input stops at 6. A pasted link keeps its whole id so Join can reject it rather than open the wrong room.
-    setCode(link ? clean.slice(0, 32) : clean.slice(0, 6));
+    setValue(readRoomField(e.target.value));
     setErr("");
   }
 
   function onJoin(e) {
     e.preventDefault();
-    if (code.length !== 6) {
-      setErr(code ? "Room codes are 6 characters: letters and numbers." : "Enter a 6-character room code.");
+    if (!value) {
+      setErr("Enter a room code or paste a room link.");
       return;
     }
-    navigate(`/room/${code}`);
+    if (!ROOM_CODE.test(value)) {
+      setErr("Room codes are 6 letters and numbers. Check the code or link and try again.");
+      return;
+    }
+    navigate(`/room/${value}`);
   }
 
   return (
     <div>
-      <h1>
-        {"Code in the same "}
-        <span className="nw">file,<span className="cur h" data-name="Priya" aria-hidden="true" style={{ "--c": "var(--pri)" }} /></span>{" "}
-        <span className="nw">at the</span>{" "}
-        <span className="nw">same time.<span className="cur h" data-name="Kai" aria-hidden="true" style={{ "--c": "var(--kai)" }} /></span>
-      </h1>
+      <h1>A shared editor for pair programming and technical interviews.</h1>
       <p className="sx-p">
-        Make a room, send the six-character code, and you are both typing in the same files. Live cursors, chat and a Run button are built in.
+        Create a room, send the six-character code, and you are editing the same files together, with live cursors,
+        chat and a Run button. No account or install.
       </p>
 
-      <div className="sx-act">
-        <button type="button" className="sx-btn" onClick={onCreate}>
-          <Plus /> Create a room
-        </button>
-        <div className="sx-or">or join with a code</div>
-        <form className="sx-join" onSubmit={onJoin} noValidate>
+      <button type="button" className="sx-btn" onClick={onCreate}>Create a room</button>
+      <p className="sx-sub">Opens a new room with its own code to share.</p>
+
+      <form className="sx-jn" onSubmit={onJoin} noValidate>
+        <label htmlFor="sx-code">Join with a room code or link</label>
+        <div className="sx-f">
           <input
-            value={code}
+            id="sx-code"
+            value={value}
             onChange={onChange}
-            placeholder="Enter room code"
-            aria-label="Room code"
+            placeholder="K3F9ZQ"
             aria-invalid={!!err}
-            aria-describedby={err ? "sx-err" : undefined}
+            aria-describedby="sx-err"
             autoComplete="off"
             autoCapitalize="characters"
+            autoCorrect="off"
             enterKeyHint="go"
             spellCheck={false}
           />
           <button type="submit">Join</button>
-        </form>
-        {err && <p id="sx-err" className="sx-err" role="alert">{err}</p>}
-        <p className="sx-note">No account, no install. A pasted room link works too.</p>
-      </div>
+        </div>
+        <p id="sx-err" className="sx-err" role="alert">{err}</p>
+      </form>
     </div>
   );
 }
 
-function StatusBar() {
+function Footer() {
   return (
-    <footer className="sx-s">
-      <span>Rooms close 10 minutes after the last person leaves</span>
-      <span>13 languages. JavaScript runs in your browser, the rest through a hosted compiler</span>
-      <span>Up to 50 people per room</span>
-      <a href={GITHUB} target="_blank" rel="noreferrer">Open source on GitHub</a>
+    <footer className="sx-ft">
+      <span>Rooms close 10 minutes after the last person leaves.</span>
+      <span>13 languages. JavaScript runs in your browser, the rest through a hosted compiler.</span>
     </footer>
   );
 }
 
 export default function Landing() {
   const navigate = useNavigate();
-  useStyles();
+  useGlobalStyles();
+  useFonts();
 
   function createRoom() {
     navigate(`/room/${newRoomCode()}`);
@@ -375,12 +415,13 @@ export default function Landing() {
 
   return (
     <div className="sx">
+      <style>{CSS}</style>
       <Header />
       <main className="sx-m">
         <Hero onCreate={createRoom} />
         <EditorPreview />
       </main>
-      <StatusBar />
+      <Footer />
     </div>
   );
 }

@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@convergencelabs/monaco-collab-ext": "^0.4.0",
     "@monaco-editor/react": "^4.7.0",
     "jszip": "^3.10.1",
     "react": "^19.2.5",
