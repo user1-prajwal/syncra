@@ -1,0 +1,177 @@
+/* Everything is scoped to .sx-app so the rest of the site is untouched. Resets use :where() (zero specificity). */
+
+html.sx-no-scroll,
+html.sx-no-scroll body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+.sx-app {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: var(--sx-vvt, 0px);
+  height: 100vh;
+  height: var(--sx-vvh, 100dvh);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--sx-bg-editor);
+  color: var(--sx-text);
+  font: 400 13px/1.45 var(--sx-font-ui);
+  -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sx-app *,
+.sx-app *::before,
+.sx-app *::after { box-sizing: border-box; }
+
+:where(.sx-app) :where(button, input, textarea, select) {
+  font: inherit;
+  color: inherit;
+  margin: 0;
+}
+:where(.sx-app) button {
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  text-align: inherit;
+}
+:where(.sx-app) :where(h1, h2, h3, p, ul) { margin: 0; padding: 0; }
+:where(.sx-app) [hidden] { display: none !important; }
+:where(.sx-app) kbd {
+  font: 500 11px var(--sx-font-mono);
+  padding: 1px 5px;
+  border: 1px solid var(--sx-border-strong);
+  border-bottom-width: 2px;
+  border-radius: var(--sx-r-sm);
+  background: var(--sx-bg-chrome);
+}
+
+/* Keyboard focus is always visible; mouse clicks do not draw a ring. */
+.sx-app :focus-visible {
+  outline: 2px solid var(--sx-focus);
+  outline-offset: 1px;
+}
+.sx-app .sx-row__main:focus-visible,
+.sx-app .sx-tab__main:focus-visible,
+.sx-app .sx-lang-trigger:focus-visible,
+.sx-app .sx-right-panel__tab:focus-visible,
+.sx-app .sx-activity__item:focus-visible { outline-offset: -2px; }
+
+.sx-app button:disabled { cursor: not-allowed; }
+
+.sx-app * { scrollbar-width: thin; scrollbar-color: var(--sx-scroll) transparent; }
+.sx-app ::-webkit-scrollbar { width: 10px; height: 10px; }
+.sx-app ::-webkit-scrollbar-thumb { background: var(--sx-scroll); border-radius: 5px; border: 2px solid transparent; background-clip: padding-box; }
+
+/* Inputs share one look. 16px on phones stops iOS from zooming the page when a field gets focus. */
+.sx-input,
+.sx-chat__input,
+.sx-newrow__field,
+.sx-lang__search input {
+  background: var(--sx-bg-input);
+  border: 1px solid var(--sx-border-strong);
+  border-radius: var(--sx-r-md);
+  color: var(--sx-text);
+  outline: none;
+}
+.sx-input:focus,
+.sx-chat__input:focus,
+.sx-newrow__field:focus { border-color: var(--sx-focus); box-shadow: 0 0 0 1px var(--sx-focus); }
+.sx-input.is-invalid,
+.sx-newrow__field.is-invalid { border-color: var(--sx-danger); box-shadow: 0 0 0 1px var(--sx-danger); }
+.sx-app ::placeholder { color: var(--sx-text-3); opacity: 1; }
+.sx-app[data-layout="mobile"] :where(input, textarea) { font-size: 16px; }
+
+/* Buttons */
+.sx-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: var(--sx-ctl-h);
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: var(--sx-r-md);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.sx-btn:disabled { opacity: 0.5; }
+.sx-btn--block { width: 100%; height: 36px; }
+.sx-btn--primary { background: var(--sx-accent-solid); color: var(--sx-on-accent); }
+.sx-btn--primary:hover:not(:disabled) { background: var(--sx-accent-solid-hover); }
+.sx-btn--secondary { background: var(--sx-bg-raised); border-color: var(--sx-border-strong); color: var(--sx-text); }
+.sx-btn--secondary:hover:not(:disabled) { background: var(--sx-bg-hover); }
+.sx-btn--danger { background: var(--sx-danger-solid); color: #fff; }
+.sx-btn--danger:hover:not(:disabled) { filter: brightness(1.1); }
+
+.sx-iconbtn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: var(--sx-ctl-h);
+  height: var(--sx-ctl-h);
+  border-radius: var(--sx-r-md);
+  color: var(--sx-text-2);
+}
+.sx-iconbtn:hover:not(:disabled) { background: var(--sx-bg-hover); color: var(--sx-text); }
+.sx-iconbtn.is-active { background: var(--sx-bg-active); color: var(--sx-text); }
+.sx-iconbtn:disabled { color: var(--sx-text-off); }
+
+.sx-badge-dot { position: absolute; top: 5px; right: 5px; width: 8px; height: 8px; border-radius: 50%; background: var(--sx-accent); box-shadow: 0 0 0 2px var(--sx-bg-chrome); }
+.sx-count { display: inline-block; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: var(--sx-accent-solid); color: var(--sx-on-accent); font: 700 10px/16px var(--sx-font-ui); text-align: center; }
+.sx-count.is-neutral { background: var(--sx-bg-active); color: var(--sx-text-2); }
+.sx-count--float { position: absolute; top: 5px; left: calc(50% + 6px); }
+
+.sx-avatar { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; border-radius: 50%; font-weight: 700; line-height: 1; }
+
+.sx-spin { animation: sx-spin 0.8s linear infinite; }
+@keyframes sx-spin { to { transform: rotate(360deg); } }
+
+/* Tooltips: CSS only, themed, never shown on touch. */
+.sx-app [data-tip] { position: relative; }
+.sx-app [data-tip]::after {
+  content: attr(data-tip);
+  position: absolute;
+  z-index: 200;
+  padding: 4px 8px;
+  border: 1px solid var(--sx-border-strong);
+  border-radius: var(--sx-r-sm);
+  background: var(--sx-bg-raised);
+  color: var(--sx-text);
+  font: 500 12px/1.3 var(--sx-font-ui);
+  white-space: nowrap;
+  box-shadow: var(--sx-shadow);
+  opacity: 0;
+  pointer-events: none;
+}
+.sx-app [data-tip]:hover::after,
+.sx-app [data-tip]:focus-visible::after { opacity: 1; transition: opacity 0.1s 0.45s; }
+.sx-app [data-tip-pos="bottom"]::after { top: calc(100% + 6px); left: 50%; transform: translateX(-50%); }
+.sx-app [data-tip-pos="bottom-end"]::after { top: calc(100% + 6px); right: 0; }
+.sx-app [data-tip-pos="right"]::after { left: calc(100% + 8px); top: 50%; transform: translateY(-50%); }
+.sx-app [data-tip-pos="left"]::after { right: calc(100% + 8px); top: 50%; transform: translateY(-50%); }
+@media (hover: none) { .sx-app [data-tip]::after { display: none; } }
+
+body.sx-resizing,
+body.sx-resizing * { cursor: col-resize !important; user-select: none !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  .sx-app *:not(.sx-spin),
+  .sx-app *:not(.sx-spin)::before,
+  .sx-app *:not(.sx-spin)::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
+    scroll-behavior: auto !important;
+  }
+  .sx-spin { animation-duration: 2s; }
+}

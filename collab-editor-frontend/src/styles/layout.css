@@ -1,0 +1,142 @@
+/* ── Top bar ─────────────────────────────────────────────────────────────── */
+.sx-topbar {
+  position: relative;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: var(--sx-s2);
+  height: var(--sx-topbar-h);
+  padding: 0 var(--sx-s3);
+  background: var(--sx-bg-chrome);
+  border-bottom: 1px solid var(--sx-border);
+  flex-shrink: 0;
+}
+.sx-topbar__spacer { flex: 1; min-width: 0; }
+.sx-logo { height: 20px; flex-shrink: 0; }
+.sx-run-wrap { display: inline-flex; position: relative; }
+
+.sx-room {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  height: var(--sx-ctl-h);
+  padding: 0 8px;
+  border: 1px solid var(--sx-border);
+  border-radius: var(--sx-r-md);
+  background: var(--sx-bg-editor);
+  color: var(--sx-text-2);
+}
+.sx-room:hover { background: var(--sx-bg-hover); color: var(--sx-text); }
+.sx-room__code { font: 600 12px var(--sx-font-mono); letter-spacing: 0.08em; color: var(--sx-text); }
+.sx-room__dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; background: var(--sx-text-off); }
+.sx-room__dot[data-state="connected"] { background: var(--sx-accent); }
+.sx-room__dot[data-state="connecting"],
+.sx-room__dot[data-state="reconnecting"] { background: var(--sx-warn); }
+.sx-room__dot[data-state="closed"] { background: var(--sx-danger); }
+
+.sx-presence {
+  display: inline-flex;
+  align-items: center;
+  height: var(--sx-ctl-h);
+  padding: 0 6px;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: var(--sx-r-md);
+}
+.sx-presence:hover { background: var(--sx-bg-hover); }
+.sx-presence .sx-avatar { box-shadow: 0 0 0 2px var(--sx-bg-chrome); }
+.sx-presence:hover .sx-avatar { box-shadow: 0 0 0 2px var(--sx-bg-hover); }
+.sx-presence .sx-avatar + .sx-avatar { margin-left: -6px; }
+.sx-presence__more { margin-left: 6px; color: var(--sx-text-3); font-size: 12px; }
+
+.sx-app[data-layout="mobile"] .sx-topbar { gap: 6px; padding: 0 var(--sx-s2); }
+.sx-app[data-layout="mobile"] .sx-logo { display: none; }
+
+/* ── Workspace ───────────────────────────────────────────────────────────── */
+.sx-workspace { position: relative; flex: 1; min-height: 0; display: flex; }
+.sx-editor-col { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--sx-bg-editor); }
+.sx-editor-host { position: relative; flex: 1; min-height: 0; }
+.sx-editor-fill { position: absolute; inset: 0; }   /* a definite box: Monaco's height:100% is unreliable inside flex on WebKit */
+.sx-editor-loading { padding: var(--sx-s4); color: var(--sx-text-3); }
+
+/* ── Activity bar (desktop / tablet) ─────────────────────────────────────── */
+.sx-activity {
+  position: relative;
+  z-index: 25;
+  width: var(--sx-activity-w);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 0;
+  background: var(--sx-bg-chrome);
+  border-right: 1px solid var(--sx-border);
+}
+.sx-activity__item {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--sx-r-md);
+  color: var(--sx-text-3);
+}
+.sx-activity__item:hover { background: var(--sx-bg-hover); color: var(--sx-text); }
+.sx-activity__item.is-active { background: var(--sx-bg-active); color: var(--sx-text); }
+.sx-activity__item.is-active::before { content: ""; position: absolute; left: -4px; top: 8px; bottom: 8px; width: 2px; border-radius: 1px; background: var(--sx-accent); }
+.sx-activity__badge { position: absolute; top: 1px; right: 1px; min-width: 14px; height: 14px; padding: 0 3px; border-radius: 7px; background: var(--sx-accent-solid); color: var(--sx-on-accent); font: 700 9px/14px var(--sx-font-ui); text-align: center; }
+
+/* ── Side dock ───────────────────────────────────────────────────────────── */
+.sx-dock { display: flex; flex-shrink: 0; min-width: 0; }
+.sx-side { display: flex; flex-direction: column; width: var(--sx-side-w); min-width: 0; background: var(--sx-bg-panel); }
+.sx-side__header { display: flex; align-items: center; height: var(--sx-tabs-h); padding: 0 var(--sx-s3); border-bottom: 1px solid var(--sx-border); flex-shrink: 0; }
+.sx-side__title { font-size: 12px; font-weight: 600; color: var(--sx-text-2); }
+.sx-side__slot { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.sx-side__languages { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+
+/* Tablet: the dock floats over the editor instead of squeezing it. */
+.sx-dock.is-overlay { position: absolute; left: var(--sx-activity-w); top: 0; bottom: 0; z-index: 20; box-shadow: var(--sx-shadow); }
+.sx-dock.is-overlay .sx-side { max-width: calc(100vw - var(--sx-activity-w) - 48px); }
+.sx-scrim { position: absolute; inset: 0 0 0 var(--sx-activity-w); z-index: 19; background: var(--sx-scrim); }
+
+/* ── Splitter ────────────────────────────────────────────────────────────── */
+.sx-resize { position: relative; flex-shrink: 0; width: 5px; margin: 0 -2px; z-index: 6; cursor: col-resize; touch-action: none; outline-offset: -2px; }
+.sx-resize::before { content: ""; position: absolute; top: 0; bottom: 0; left: 50%; width: 1px; transform: translateX(-50%); background: var(--sx-border); }
+.sx-resize:hover::before,
+.sx-resize:focus-visible::before { width: 3px; background: var(--sx-focus); }
+body.sx-resizing .sx-resize::before { width: 3px; background: var(--sx-focus); }
+@media (pointer: coarse) { .sx-resize { width: 14px; margin: 0 -6px; } }
+
+/* ── Right dock (output + chat) ──────────────────────────────────────────── */
+.sx-right { width: var(--sx-right-w); max-width: 50vw; flex-shrink: 0; display: flex; flex-direction: column; min-width: 0; background: var(--sx-bg-panel); }
+.sx-right-panel { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.sx-right-panel__tabs { display: flex; align-items: stretch; height: var(--sx-tabs-h); flex-shrink: 0; background: var(--sx-bg-chrome); border-bottom: 1px solid var(--sx-border); }
+.sx-right-panel__tab { position: relative; display: inline-flex; align-items: center; gap: 6px; padding: 0 14px; color: var(--sx-text-3); font-weight: 500; }
+.sx-right-panel__tab:hover { color: var(--sx-text); }
+.sx-right-panel__tab.is-active { color: var(--sx-text); box-shadow: inset 0 -2px 0 var(--sx-accent); }
+.sx-right-panel__close { margin-left: auto; display: flex; align-items: center; padding-right: 4px; }
+.sx-right-panel__pane { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+
+/* ── Status bar ──────────────────────────────────────────────────────────── */
+.sx-statusbar { display: flex; align-items: center; height: var(--sx-status-h); flex-shrink: 0; background: var(--sx-bg-chrome); border-top: 1px solid var(--sx-border); color: var(--sx-text-2); font-size: 12px; }
+.sx-status__item { display: inline-flex; align-items: center; gap: 6px; padding: 0 var(--sx-s3); white-space: nowrap; }
+.sx-status__item + .sx-status__item { border-left: 1px solid var(--sx-border); }
+.sx-status__spacer { flex: 1; }
+.sx-status__path { max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
+
+.sx-banner { display: flex; align-items: center; gap: var(--sx-s2); padding: 6px var(--sx-s3); background: var(--sx-warn-subtle); border-bottom: 1px solid var(--sx-border); font-size: 12px; flex-shrink: 0; }
+.sx-banner.is-error { background: var(--sx-danger-subtle); }
+
+/* ── Phone navigation ────────────────────────────────────────────────────── */
+.sx-mobilenav { display: flex; align-items: stretch; flex-shrink: 0; height: calc(56px + env(safe-area-inset-bottom, 0px)); padding-bottom: env(safe-area-inset-bottom, 0px); background: var(--sx-bg-chrome); border-top: 1px solid var(--sx-border); }
+.sx-mobilenav__item { position: relative; flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 11px; font-weight: 500; color: var(--sx-text-3); }
+.sx-mobilenav__item:active { background: var(--sx-bg-hover); color: var(--sx-text); }
+.sx-mobilenav__run { flex: 1.3; margin: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border-radius: var(--sx-r-md); background: var(--sx-accent-solid); color: var(--sx-on-accent); font-size: 11px; font-weight: 700; }
+.sx-mobilenav__run:active:not(:disabled) { background: var(--sx-accent-solid-hover); }
+.sx-mobilenav__run:disabled { opacity: 0.5; }
+.sx-mobilenav.is-compact { height: 48px; padding-bottom: 0; }
+.sx-mobilenav.is-compact .sx-mobilenav__item,
+.sx-mobilenav.is-compact .sx-mobilenav__run { flex-direction: row; gap: 6px; font-size: 13px; }

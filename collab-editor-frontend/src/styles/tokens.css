@@ -1,0 +1,105 @@
+/*
+ * Design tokens. Every colour in the editor comes from these variables, so a component can never be
+ * "accidentally dark" in the light theme. Both themes are designed separately (not inverted).
+ * Text pairs were checked for WCAG AA (4.5:1) against the panel, chrome and hover surfaces.
+ */
+
+.sx-app {
+  --sx-font-ui: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --sx-font-mono: "JetBrains Mono", "Fira Code", Consolas, ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --sx-s1: 4px;
+  --sx-s2: 8px;
+  --sx-s3: 12px;
+  --sx-s4: 16px;
+  --sx-r-sm: 4px;
+  --sx-r-md: 6px;
+  --sx-r-lg: 8px;
+
+  --sx-topbar-h: 44px;
+  --sx-activity-w: 44px;
+  --sx-tabs-h: 36px;
+  --sx-status-h: 24px;
+  --sx-row-h: 28px;
+  --sx-ctl-h: 28px;
+}
+
+.sx-app[data-theme="dark"] {
+  color-scheme: dark;
+  --sx-bg-editor: #0d1117;
+  --sx-bg-panel: #12171e;
+  --sx-bg-chrome: #161b22;
+  --sx-bg-raised: #1a2029;
+  --sx-bg-input: #0a0d12;
+  --sx-bg-hover: #1d2430;
+  --sx-bg-active: #252d3a;
+
+  --sx-border: #262d38;
+  --sx-border-strong: #39424f;
+
+  --sx-text: #e6edf3;
+  --sx-text-2: #b1bac4;
+  --sx-text-3: #8b949e;
+  --sx-text-off: #5b6573;
+
+  --sx-accent: #4caf50;
+  --sx-accent-solid: #2e7d32;
+  --sx-accent-solid-hover: #388e3c;
+  --sx-on-accent: #ffffff;
+  --sx-danger: #f85149;
+  --sx-danger-solid: #c62828;
+  --sx-warn: #d29922;
+  --sx-warn-subtle: rgba(210, 153, 34, 0.16);
+  --sx-danger-subtle: rgba(248, 81, 73, 0.14);
+  --sx-focus: #4493f8;
+
+  --sx-scrim: rgba(1, 4, 9, 0.62);
+  --sx-scroll: rgba(139, 148, 158, 0.35);
+  --sx-shadow: 0 8px 24px rgba(1, 4, 9, 0.5);
+}
+
+.sx-app[data-theme="light"] {
+  color-scheme: light;
+  --sx-bg-editor: #ffffff;
+  --sx-bg-panel: #f6f8fa;
+  --sx-bg-chrome: #eff2f5;
+  --sx-bg-raised: #ffffff;
+  --sx-bg-input: #ffffff;
+  --sx-bg-hover: #e6eaee;
+  --sx-bg-active: #dae0e7;
+
+  --sx-border: #d1d9e0;
+  --sx-border-strong: #b4bfca;
+
+  --sx-text: #1f2328;
+  --sx-text-2: #3d444d;
+  --sx-text-3: #59636e;
+  --sx-text-off: #8c959f;
+
+  --sx-accent: #1a7f37;
+  --sx-accent-solid: #1a7f37;
+  --sx-accent-solid-hover: #176f31;
+  --sx-on-accent: #ffffff;
+  --sx-danger: #cf222e;
+  --sx-danger-solid: #cf222e;
+  --sx-warn: #8a5900;
+  --sx-warn-subtle: rgba(138, 89, 0, 0.12);
+  --sx-danger-subtle: rgba(207, 34, 46, 0.1);
+  --sx-focus: #0969da;
+
+  --sx-scrim: rgba(31, 35, 40, 0.42);
+  --sx-scroll: rgba(89, 99, 110, 0.4);
+  --sx-shadow: 0 8px 24px rgba(31, 35, 40, 0.18);
+}
+
+/* Touch screens: every row and control gets a finger-sized target. */
+.sx-app[data-layout="mobile"] {
+  --sx-topbar-h: 48px;
+  --sx-tabs-h: 40px;
+}
+@media (pointer: coarse) {
+  .sx-app {
+    --sx-row-h: 44px;
+    --sx-ctl-h: 40px;
+  }
+}
